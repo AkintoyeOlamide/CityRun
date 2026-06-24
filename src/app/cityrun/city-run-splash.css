@@ -1,0 +1,223 @@
+/* Splash screen — loaded only on /cityrun entry */
+.city-run-theme .cr-splash-screen {
+  background-color: #ffffff;
+}
+
+@keyframes cr-splash-bike-ride {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(420%);
+    opacity: 0;
+  }
+}
+
+@keyframes cr-splash-speed-flicker {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateX(-3px);
+  }
+}
+
+.city-run-theme .cr-splash-bike-rider {
+  animation: cr-splash-bike-ride 4.8s ease-in-out infinite;
+}
+
+.city-run-theme .cr-splash-bike-body {
+  animation: cr-splash-bike-bob 0.55s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.city-run-theme .cr-splash-speed-lines {
+  animation: cr-splash-speed-flicker 0.45s ease-in-out infinite;
+}
+
+.city-run-theme .cr-splash-road-lines-light {
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 10px,
+    #cbd5e1 10px,
+    #cbd5e1 20px
+  );
+  animation: cr-splash-road-move 0.75s linear infinite;
+}
+
+@keyframes cr-splash-map-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-8px, 6px);
+  }
+}
+
+@keyframes cr-splash-route-march {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+@keyframes cr-splash-pin-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.08);
+  }
+}
+
+.city-run-theme .cr-splash-map-grid {
+  animation: cr-splash-map-drift 18s ease-in-out infinite;
+}
+
+.city-run-theme .cr-splash-route {
+  animation: cr-splash-route-march 4s linear infinite;
+}
+
+.city-run-theme .cr-splash-pin-pulse {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: cr-splash-pin-pulse 3s ease-in-out infinite;
+}
+
+.city-run-theme .cr-splash-vignette {
+  background:
+    linear-gradient(180deg, rgb(7 13 26 / 0.45) 0%, transparent 35%, transparent 55%, rgb(7 13 26 / 0.72) 100%),
+    linear-gradient(90deg, rgb(7 13 26 / 0.35) 0%, transparent 25%, transparent 75%, rgb(7 13 26 / 0.35) 100%);
+}
+
+@keyframes cr-splash-bike-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes cr-splash-bike-drift {
+  0%,
+  100% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes cr-splash-wheel-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cr-splash-pedal-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cr-splash-road-move {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 48px 0;
+  }
+}
+
+@keyframes cr-splash-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: translateX(-50%) scale(1.08);
+  }
+}
+
+.city-run-theme .cr-splash-glow {
+  animation: cr-splash-glow-pulse 3.5s ease-in-out infinite;
+}
+
+.city-run-theme .cr-splash-bike-wrap {
+  animation: cr-splash-bike-drift 2.8s ease-in-out infinite;
+}
+
+.city-run-theme .cr-splash-wheel {
+  animation: cr-splash-wheel-spin 1.1s linear infinite;
+}
+
+.city-run-theme .cr-splash-pedals {
+  animation: cr-splash-pedal-spin 1.1s linear infinite;
+  transform-origin: 58px 52px;
+}
+
+.city-run-theme .cr-splash-road {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.04) 45%,
+    rgb(255 255 255 / 0.08) 50%,
+    rgb(255 255 255 / 0.04) 55%,
+    transparent 100%
+  );
+}
+
+.city-run-theme .cr-splash-road-lines {
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 12px,
+    rgb(255 255 255 / 0.22) 12px,
+    rgb(255 255 255 / 0.22) 24px
+  );
+  animation: cr-splash-road-move 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-run-theme .cr-splash-map-grid,
+  .city-run-theme .cr-splash-route,
+  .city-run-theme .cr-splash-pin-pulse,
+  .city-run-theme .cr-splash-glow,
+  .city-run-theme .cr-splash-bike-wrap,
+  .city-run-theme .cr-splash-bike-body,
+  .city-run-theme .cr-splash-wheel,
+  .city-run-theme .cr-splash-pedals,
+  .city-run-theme .cr-splash-road-lines,
+  .city-run-theme .cr-splash-bike-rider,
+  .city-run-theme .cr-splash-speed-lines,
+  .city-run-theme .cr-splash-road-lines-light {
+    animation: none;
+  }
+}

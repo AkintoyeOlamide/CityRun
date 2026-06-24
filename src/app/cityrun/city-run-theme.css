@@ -1,0 +1,452 @@
+/* City Run — premium modern blue (scoped to .city-run-theme) */
+@theme inline {
+  --color-cr-yellow: #facc15;
+  --color-cr-yellow-dark: #eab308;
+  --color-cr-yellow-muted: rgb(250 204 21 / 0.14);
+}
+
+.city-run-theme {
+  --cr-bg: #070d1a;
+  --cr-bg-deep: #040810;
+  --cr-surface: #121f38;
+  --cr-surface-muted: #0c1528;
+  --cr-surface-hover: #1a2d52;
+  --cr-border: rgb(255 255 255 / 0.1);
+  --cr-glass: rgb(18 31 56 / 0.72);
+
+  --cr-accent: #3478f6;
+  --cr-accent-strong: #2563d4;
+  --cr-accent-soft: #6ba3ff;
+  --cr-accent-muted: rgb(52 120 246 / 0.22);
+  --cr-glow: rgb(52 120 246 / 0.45);
+
+  --cr-yellow: #facc15;
+  --cr-yellow-dark: #eab308;
+  --cr-yellow-muted: rgb(250 204 21 / 0.14);
+
+  --accent: #3478f6;
+  --accent-dark: #2563d4;
+  --accent-light: #6ba3ff;
+  --color-accent: #3478f6;
+  --color-accent-dark: #2563d4;
+  --color-accent-light: #6ba3ff;
+}
+
+.city-run-theme .bg-cr-page {
+  background-color: var(--cr-bg);
+}
+
+.city-run-theme .bg-cr-surface {
+  background-color: var(--cr-surface);
+}
+
+.city-run-theme .bg-cr-surface-muted {
+  background-color: var(--cr-surface-muted);
+}
+
+.city-run-theme .active\:bg-cr-surface-hover:active {
+  background-color: var(--cr-surface-hover);
+}
+
+.city-run-theme .hover\:bg-cr-surface-hover:hover {
+  background-color: var(--cr-surface-hover);
+}
+
+.city-run-theme .border-cr {
+  border-color: var(--cr-border);
+}
+
+.city-run-theme .cr-mesh-page {
+  background-color: var(--cr-bg);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgb(52 120 246 / 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgb(37 99 212 / 0.06), transparent);
+}
+
+.city-run-theme .cr-text-headline {
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+.city-run-theme .cr-text-label {
+  color: rgb(255 255 255 / 0.92);
+}
+
+.city-run-theme .cr-text-body {
+  color: rgb(255 255 255 / 0.82);
+}
+
+.city-run-theme .cr-text-muted {
+  color: rgb(255 255 255 / 0.68);
+}
+
+.city-run-theme .text-cr-yellow {
+  color: var(--cr-yellow);
+}
+
+.city-run-theme .bg-cr-yellow {
+  background-color: var(--cr-yellow);
+}
+
+.city-run-theme .bg-cr-yellow-muted {
+  background-color: var(--cr-yellow-muted);
+}
+
+.city-run-theme .border-cr-yellow {
+  border-color: rgb(250 204 21 / 0.35);
+}
+
+.city-run-theme .cr-glass-card {
+  background: var(--cr-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--cr-border);
+  box-shadow:
+    0 4px 24px rgb(0 0 0 / 0.25),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.city-run-theme .cr-glow-ring {
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 32px rgb(0 0 0 / 0.35);
+}
+
+.city-run-theme .cr-nav-pill {
+  background: rgb(12 21 40 / 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.4);
+}
+
+.city-run-theme .cr-ops-segment {
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.city-run-theme .cr-ops-header {
+  background: rgb(18 31 56 / 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.city-run-theme .cr-ops-nav-link {
+  color: rgb(255 255 255 / 0.6);
+  transition: color 0.15s, background 0.15s;
+}
+
+.city-run-theme .cr-ops-nav-link:hover {
+  color: rgb(255 255 255 / 0.9);
+  background: rgb(255 255 255 / 0.06);
+}
+
+.city-run-theme .cr-ops-nav-link[data-active="true"] {
+  color: #ffffff;
+  background: rgb(52 120 246 / 0.22);
+  box-shadow: inset 0 0 0 1px rgb(52 120 246 / 0.35);
+}
+
+/* Admin ops — clean, compact operations UI */
+.city-run-theme .admin-shell,
+.city-run-theme .admin-login-page {
+  --admin-bg: #0c1220;
+  --admin-sidebar: #0a0f1a;
+  --admin-header: rgb(10 15 26 / 0.92);
+  --admin-surface: rgb(255 255 255 / 0.03);
+  --admin-surface-muted: rgb(255 255 255 / 0.05);
+  --admin-border: rgb(255 255 255 / 0.08);
+  --admin-border-strong: rgb(255 255 255 / 0.14);
+  --admin-text: rgb(255 255 255 / 0.94);
+  --admin-muted: rgb(255 255 255 / 0.62);
+  --admin-subtle: rgb(255 255 255 / 0.42);
+  --admin-accent-soft: rgb(52 120 246 / 0.12);
+  --admin-accent-border: rgb(52 120 246 / 0.28);
+  --admin-shadow: none;
+
+  background-color: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+.city-run-theme .admin-sidebar {
+  background: var(--admin-sidebar);
+  border-color: var(--admin-border);
+}
+
+.city-run-theme .admin-header {
+  background: var(--admin-header);
+  border-color: var(--admin-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.city-run-theme .admin-title {
+  color: var(--admin-text);
+}
+
+.city-run-theme .admin-subtitle {
+  color: var(--admin-muted);
+}
+
+.city-run-theme .admin-nav-link {
+  color: var(--admin-muted);
+  border-left: 2px solid transparent;
+}
+
+.city-run-theme .admin-nav-link:hover {
+  background: rgb(255 255 255 / 0.04);
+  color: var(--admin-text);
+}
+
+.city-run-theme .admin-nav-link[data-active="true"] {
+  background: var(--admin-accent-soft);
+  border-left-color: var(--color-accent);
+  color: var(--color-accent-light);
+  box-shadow: none;
+}
+
+.city-run-theme .admin-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  box-shadow: none;
+}
+
+.city-run-theme .admin-stat-row {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+}
+
+.city-run-theme .admin-stat-row > * + * {
+  border-left: 1px solid var(--admin-border);
+}
+
+.city-run-theme .admin-stat {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.city-run-theme .admin-stat--accent {
+  background: transparent;
+  border: none;
+}
+
+.city-run-theme .admin-stat-label {
+  color: var(--admin-subtle);
+  letter-spacing: 0.06em;
+}
+
+.city-run-theme .admin-stat-value {
+  color: var(--admin-text);
+}
+
+.city-run-theme .admin-stat-value--accent {
+  color: var(--color-accent-light);
+}
+
+.city-run-theme .admin-input {
+  background: rgb(255 255 255 / 0.04);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text);
+}
+
+.city-run-theme .admin-input::placeholder {
+  color: var(--admin-subtle);
+}
+
+.city-run-theme .admin-input:focus {
+  border-color: rgb(52 120 246 / 0.45);
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(52 120 246 / 0.15);
+}
+
+.city-run-theme .admin-tabs {
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid var(--admin-border);
+  flex-shrink: 0;
+}
+
+.city-run-theme .admin-tab {
+  color: var(--admin-muted);
+}
+
+.city-run-theme .admin-tab:hover {
+  color: var(--admin-text);
+  background: rgb(255 255 255 / 0.04);
+}
+
+.city-run-theme .admin-tab--active {
+  background: rgb(52 120 246 / 0.18);
+  color: var(--color-accent-light);
+  box-shadow: inset 0 0 0 1px rgb(52 120 246 / 0.25);
+}
+
+.city-run-theme .admin-table {
+  table-layout: fixed;
+  width: 100%;
+  font-size: 0.8125rem;
+}
+
+.city-run-theme .admin-table thead {
+  background: rgb(255 255 255 / 0.02);
+  color: var(--admin-subtle);
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.city-run-theme .admin-table tbody tr {
+  border-bottom: 1px solid rgb(255 255 255 / 0.05);
+}
+
+.city-run-theme .admin-table tbody tr:hover {
+  background: rgb(255 255 255 / 0.03);
+}
+
+.city-run-theme .admin-table tbody tr.admin-row-selected {
+  background: var(--admin-accent-soft);
+}
+
+.city-run-theme .admin-table th,
+.city-run-theme .admin-table td {
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.city-run-theme .admin-table th {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.city-run-theme .admin-table td {
+  padding: 0.4375rem 0.625rem;
+}
+
+.city-run-theme .admin-table .admin-cell-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.city-run-theme .admin-empty {
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+  background: rgb(255 255 255 / 0.02);
+}
+
+.city-run-theme .admin-skeleton {
+  background: rgb(255 255 255 / 0.04);
+  border-color: var(--admin-border);
+}
+
+.city-run-theme .admin-row-label {
+  color: var(--admin-subtle);
+}
+
+.city-run-theme .admin-row-value {
+  color: var(--admin-text);
+}
+
+.city-run-theme .admin-divider {
+  border-color: var(--admin-border);
+}
+
+.city-run-theme .admin-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  color: var(--admin-muted);
+}
+
+.city-run-theme .admin-btn-ghost:hover {
+  background: rgb(255 255 255 / 0.04);
+  color: var(--admin-text);
+  border-color: var(--admin-border-strong);
+}
+
+.city-run-theme .admin-icon-stat {
+  background: rgb(255 255 255 / 0.03);
+  border: 1px solid var(--admin-border);
+}
+
+.city-run-theme .admin-badge--live {
+  background: var(--admin-accent-soft);
+  color: var(--color-accent-light);
+  box-shadow: inset 0 0 0 1px var(--admin-accent-border);
+}
+
+.city-run-theme .admin-badge--done {
+  background: rgb(16 185 129 / 0.1);
+  color: #6ee7b7;
+  box-shadow: inset 0 0 0 1px rgb(16 185 129 / 0.22);
+}
+
+.city-run-theme .admin-badge--cancel {
+  background: rgb(239 68 68 / 0.1);
+  color: #fca5a5;
+  box-shadow: inset 0 0 0 1px rgb(239 68 68 / 0.22);
+}
+
+.city-run-theme .admin-badge--neutral {
+  background: rgb(255 255 255 / 0.05);
+  color: var(--admin-muted);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+.city-run-theme .admin-alert--success {
+  background: rgb(16 185 129 / 0.08);
+  border-color: rgb(16 185 129 / 0.22);
+  color: #6ee7b7;
+}
+
+.city-run-theme .admin-alert--error {
+  background: rgb(239 68 68 / 0.08);
+  border-color: rgb(239 68 68 / 0.22);
+  color: #fca5a5;
+}
+
+.city-run-theme .admin-alert--info {
+  background: var(--admin-accent-soft);
+  border-color: var(--admin-accent-border);
+  color: var(--color-accent-light);
+}
+
+.city-run-theme .admin-link-chevron {
+  color: var(--admin-subtle);
+}
+
+.city-run-theme .admin-link-chevron:hover {
+  color: var(--color-accent-light);
+}
+
+.city-run-theme .admin-checkbox-label {
+  color: var(--admin-muted);
+}
+
+/* Delivery timeline / map inside admin — keep native dark glass, brighten muted copy */
+.city-run-theme .admin-shell .cr-text-headline,
+.city-run-theme .admin-shell .cr-text-label {
+  color: rgb(255 255 255 / 0.96);
+}
+
+.city-run-theme .admin-shell .cr-text-body {
+  color: rgb(255 255 255 / 0.88);
+}
+
+.city-run-theme .admin-shell .cr-text-muted {
+  color: rgb(255 255 255 / 0.72);
+}
+
+.city-run-theme .admin-shell .text-white\/75,
+.city-run-theme .admin-shell .text-white\/70 {
+  color: rgb(255 255 255 / 0.78);
+}
+
+.city-run-theme .admin-shell .text-emerald-300 {
+  color: #6ee7b7;
+}
+
+.city-run-theme .admin-shell .text-red-200 {
+  color: #fca5a5;
+}
+
