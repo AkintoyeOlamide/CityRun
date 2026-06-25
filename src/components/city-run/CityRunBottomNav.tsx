@@ -7,7 +7,7 @@ import { ClipboardList, Home, Plus, User } from "lucide-react";
 
 const items: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Home", href: "/cityrun/home", icon: Home },
-  { label: "Orders", href: "/cityrun/account", icon: ClipboardList },
+  { label: "Trips", href: "/cityrun/trips", icon: ClipboardList },
   { label: "New", href: "/cityrun/send", icon: Plus },
   { label: "Account", href: "/cityrun/account", icon: User },
 ];
@@ -22,7 +22,10 @@ export function CityRunBottomNav() {
           const active =
             item.href === "/cityrun/home"
               ? pathname === "/cityrun/home"
-              : pathname.startsWith(item.href);
+              : item.href === "/cityrun/trips"
+                ? pathname.startsWith("/cityrun/trips") ||
+                  pathname.startsWith("/cityrun/order/")
+                : pathname.startsWith(item.href);
 
           return (
             <li key={item.label}>

@@ -38,7 +38,7 @@ async function googleAutocomplete(input: string): Promise<PlacePrediction[] | nu
   url.searchParams.set("location", `${lagosLocationBias.lat},${lagosLocationBias.lng}`);
   url.searchParams.set("radius", String(lagosLocationBias.radiusMeters));
   url.searchParams.set("strictbounds", "false");
-  url.searchParams.set("types", "geocode|establishment");
+  url.searchParams.set("language", "en");
 
   const res = await fetch(url.toString(), { cache: "no-store" });
   const data = (await res.json()) as {
@@ -89,14 +89,16 @@ async function googlePlaceDetails(placeId: string): Promise<AddressValue | null>
 }
 
 async function nominatimAutocomplete(input: string): Promise<PlacePrediction[]> {
+  const searchQuery = /\blagos\b/i.test(input) ? input : `${input}, Lagos, Nigeria`;
+
   const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("q", input);
+  url.searchParams.set("q", searchQuery);
   url.searchParams.set("format", "json");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("countrycodes", "ng");
   url.searchParams.set("limit", "6");
   url.searchParams.set("viewbox", "3.05,6.35,3.75,6.75");
-  url.searchParams.set("bounded", "1");
+  url.searchParams.set("bounded", "0");
 
   const res = await fetch(url.toString(), {
     headers: {

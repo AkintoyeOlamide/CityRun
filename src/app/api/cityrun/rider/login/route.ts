@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { riderSessionCookieOptions } from "@/lib/auth/rider-session";
 import { toPublicRider, verifyRiderLogin } from "@/lib/city-run/riders-store";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json(
+        { error: "Rider login requires Supabase. Check your Supabase URL and keys." },
+        { status: 503 },
+      );
+    }
+
     const body = (await request.json()) as {
       username?: string;
       password?: string;
@@ -37,7 +45,10 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
-    return NextResponse.json({ error: "Login failed" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Login failed" },
+      { status: 500 },
+    );
   }
 }

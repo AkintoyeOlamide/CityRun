@@ -8,7 +8,7 @@ import {
   resolveAddressFromCurrentLocation,
 } from "@/lib/city-run/use-current-location-address";
 import {
-  hasGoogleMaps,
+  getGoogleMaps,
   lagosLocationBias,
   loadGooglePlacesScript,
 } from "@/lib/city-run/google-maps";
@@ -37,28 +37,83 @@ type Prediction = {
   lng?: number;
 };
 
-type Provider = "loading" | "google" | "server";
+async function resolveGooglePlaceDetails(placeId: string): Promise<AddressValue | null> {
+  const maps = getGoogleMaps();
+  const places = maps?.places;
+  if (!places?.PlacesService || !places.PlacesServiceStatus) return null;
 
-type GoogleMapsWindow = Window & {
-  google?: {
-    maps: {
-      places: {
-        Autocomplete: new (
-          input: HTMLInputElement,
-          opts?: object,
-        ) => {
-          addListener: (event: string, fn: () => void) => void;
-          getPlace: () => {
-            formatted_address?: string;
-            place_id?: string;
-            geometry?: { location?: { lat: () => number; lng: () => number } };
-          };
-        };
-      };
-      event: { clearInstanceListeners: (instance: object) => void };
-    };
-  };
-};
+  const service = new places.PlacesService(document.createElement("div"));
+
+  return new Promise((resolve) => {
+    service.getDetails(
+      { placeId, fields: ["formatted_address", "geometry", "place_id"] },
+      (place, status) => {
+        if (
+          status !== places.PlacesServiceStatus!.OK ||
+          !place?.formatted_address
+        ) {
+          resolve(null);
+          return;
+        }
+
+        resolve({
+          formatted: place.formatted_address,
+          placeId: place.place_id,
+          lat: place.geometry?.location?.lat(),
+          lng: place.geometry?.location?.lng(),
+        });
+      },
+    );
+  });
+}
+
+async function fetchServerPredictions(input: string): Promise<Prediction[]> {
+  const res = await fetch(
+    `/api/cityrun/places/autocomplete?input=${encodeURIComponent(input)}`,
+  );
+  if (!res.ok) throw new Error("Autocomplete failed");
+  const body = (await res.json()) as { predictions?: Prediction[] };
+  return body.predictions ?? [];
+}
+
+function fetchGooglePredictions(input: string): Promise<Prediction[] | null> {
+  const maps = getGoogleMaps();
+  const places = maps?.places;
+  if (!places?.AutocompleteService || !places.PlacesServiceStatus) {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    const service = new places.AutocompleteService();
+    const center = new maps!.LatLng(lagosLocationBias.lat, lagosLocationBias.lng);
+
+    service.getPlacePredictions(
+      {
+        input,
+        componentRestrictions: { country: "ng" },
+        location: center,
+        radius: lagosLocationBias.radiusMeters,
+      },
+      (results, status) => {
+        if (
+          status !== places!.PlacesServiceStatus!.OK ||
+          !results ||
+          results.length === 0
+        ) {
+          resolve([]);
+          return;
+        }
+
+        resolve(
+          results.map((result) => ({
+            description: result.description,
+            placeId: result.place_id,
+          })),
+        );
+      },
+    );
+  });
+}
 
 export function AddressAutocomplete({
   id,
@@ -77,21 +132,38 @@ export function AddressAutocomplete({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
   const autoDetectAttemptedRef = useRef(false);
+  const googleReadyRef = useRef(false);
 
   const [query, setQuery] = useState(value.formatted);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
   const [editMode, setEditMode] = useState(!lockUntilChange);
-  const [provider, setProvider] = useState<Provider>("server");
 
   onChangeRef.current = onChange;
 
   useEffect(() => {
     setQuery(value.formatted);
   }, [value.formatted]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadGooglePlacesScript()
+      .then(() => {
+        if (!cancelled) googleReadyRef.current = true;
+      })
+      .catch(() => {
+        googleReadyRef.current = false;
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!autoDetectOnMount || !isGeolocationSupported()) {
@@ -132,69 +204,7 @@ export function AddressAutocomplete({
     };
   }, [autoDetectOnMount, lockUntilChange, value.formatted]);
 
-  const placesRequestedRef = useRef(false);
-
-  const requestPlaces = useCallback(() => {
-    if (!hasGoogleMaps || placesRequestedRef.current) return;
-    placesRequestedRef.current = true;
-    setProvider("loading");
-    loadGooglePlacesScript()
-      .then(() => setProvider("google"))
-      .catch(() => setProvider("server"));
-  }, []);
-
   useEffect(() => {
-    if (!hasGoogleMaps) {
-      setProvider("server");
-    }
-  }, []);
-
-  useEffect(() => {
-    function onAuthFailure() {
-      setProvider("server");
-    }
-
-    window.addEventListener("cityrun:maps-auth-failure", onAuthFailure);
-    return () => window.removeEventListener("cityrun:maps-auth-failure", onAuthFailure);
-  }, []);
-
-  useEffect(() => {
-    const input = inputRef.current;
-    const win = window as GoogleMapsWindow;
-    if (provider !== "google" || !input || !win.google?.maps?.places) return;
-
-    const autocomplete = new win.google.maps.places.Autocomplete(input, {
-      fields: ["formatted_address", "geometry", "place_id"],
-      componentRestrictions: { country: "ng" },
-      bounds: {
-        north: lagosLocationBias.lat + 0.35,
-        south: lagosLocationBias.lat - 0.35,
-        east: lagosLocationBias.lng + 0.35,
-        west: lagosLocationBias.lng - 0.35,
-      },
-      strictBounds: false,
-    });
-
-    autocomplete.addListener("place_changed", () => {
-      const place = autocomplete.getPlace();
-      if (!place.formatted_address) return;
-      setQuery(place.formatted_address);
-      onChangeRef.current({
-        formatted: place.formatted_address,
-        placeId: place.place_id,
-        lat: place.geometry?.location?.lat(),
-        lng: place.geometry?.location?.lng(),
-      });
-    });
-
-    return () => {
-      win.google?.maps.event.clearInstanceListeners(autocomplete);
-    };
-  }, [provider, id]);
-
-  useEffect(() => {
-    if (provider !== "server") return;
-
     function onPointerDown(event: MouseEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false);
@@ -203,57 +213,88 @@ export function AddressAutocomplete({
 
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [provider]);
+  }, []);
 
   useEffect(() => {
-    if (provider !== "server") return;
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     const trimmed = query.trim();
     if (trimmed.length < 3) {
       setPredictions([]);
       setOpen(false);
-      setLoading(false);
+      setSearching(false);
+      setSearched(false);
       return;
     }
 
-    setLoading(true);
+    setSearching(true);
+    setSearched(false);
     debounceRef.current = setTimeout(async () => {
       const requestId = ++requestIdRef.current;
+
       try {
-        const res = await fetch(
-          `/api/cityrun/places/autocomplete?input=${encodeURIComponent(trimmed)}`,
-        );
-        if (!res.ok) throw new Error("Autocomplete failed");
-        const body = (await res.json()) as {
-          predictions?: Prediction[];
-          source?: string;
-        };
+        let next: Prediction[] = [];
+
+        if (!googleReadyRef.current) {
+          try {
+            await loadGooglePlacesScript();
+            googleReadyRef.current = true;
+          } catch {
+            googleReadyRef.current = false;
+          }
+        }
+
+        if (googleReadyRef.current) {
+          const googleResults = await fetchGooglePredictions(trimmed);
+          if (googleResults !== null) {
+            next = googleResults;
+          }
+        }
+
+        if (next.length === 0) {
+          next = await fetchServerPredictions(trimmed);
+        }
+
         if (requestId !== requestIdRef.current) return;
-        setPredictions(body.predictions ?? []);
-        setOpen((body.predictions?.length ?? 0) > 0);
+        setPredictions(next);
+        setOpen(true);
+        setSearched(true);
       } catch {
         if (requestId !== requestIdRef.current) return;
         setPredictions([]);
-        setOpen(false);
+        setOpen(true);
+        setSearched(true);
       } finally {
-        if (requestId === requestIdRef.current) setLoading(false);
+        if (requestId === requestIdRef.current) setSearching(false);
       }
-    }, 280);
+    }, 250);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [provider, query]);
+  }, [query]);
 
   async function selectPrediction(prediction: Prediction) {
     setOpen(false);
     setPredictions([]);
+    setSearched(false);
     setQuery(prediction.description);
-    setLoading(true);
+    setSearching(true);
 
     try {
+      if (!prediction.placeId.startsWith("nominatim:")) {
+        try {
+          await loadGooglePlacesScript();
+          const googleAddress = await resolveGooglePlaceDetails(prediction.placeId);
+          if (googleAddress) {
+            onChange(googleAddress);
+            return;
+          }
+        } catch {
+          /* fall through to server / description fallback */
+        }
+      }
+
       const params = new URLSearchParams({
         placeId: prediction.placeId,
         description: prediction.description,
@@ -280,7 +321,7 @@ export function AddressAutocomplete({
         lng: prediction.lng,
       });
     } finally {
-      setLoading(false);
+      setSearching(false);
     }
   }
 
@@ -304,6 +345,8 @@ export function AddressAutocomplete({
 
   const showLockedView =
     lockUntilChange && !editMode && (locating || value.formatted.trim().length > 0);
+
+  const showDropdown = open && query.trim().length >= 3;
 
   if (showLockedView) {
     return (
@@ -362,10 +405,7 @@ export function AddressAutocomplete({
           placeholder={placeholder}
           value={query}
           onFocus={() => {
-            requestPlaces();
-            if (provider === "server" && predictions.length > 0) {
-              setOpen(true);
-            } else if (provider !== "server") {
+            if (query.trim().length >= 3 && (predictions.length > 0 || searched)) {
               setOpen(true);
             }
           }}
@@ -389,6 +429,9 @@ export function AddressAutocomplete({
                 }`
           }
           autoComplete="off"
+          aria-autocomplete="list"
+          aria-expanded={showDropdown}
+          aria-controls={showDropdown ? `${id}-suggestions` : undefined}
         />
 
         {canUseCurrentLocation && (
@@ -423,20 +466,33 @@ export function AddressAutocomplete({
         <p className="mt-2 text-xs text-amber-300/90">{locationError}</p>
       )}
 
-      {provider === "server" && open && predictions.length > 0 && (
-        <ul className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#0b1424] shadow-xl">
-          {predictions.map((prediction) => (
-            <li key={prediction.placeId}>
-              <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => void selectPrediction(prediction)}
-                className="block w-full px-4 py-3 text-left text-sm text-white/85 hover:bg-white/5"
-              >
-                {prediction.description}
-              </button>
+      {showDropdown && (
+        <ul
+          id={`${id}-suggestions`}
+          role="listbox"
+          className="absolute z-[99999] mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#0b1424] shadow-xl"
+        >
+          {searching && (
+            <li className="px-4 py-3 text-sm text-white/45">Searching addresses…</li>
+          )}
+          {!searching && predictions.length === 0 && searched && (
+            <li className="px-4 py-3 text-sm text-white/45">
+              No addresses found — try a street name or landmark
             </li>
-          ))}
+          )}
+          {!searching &&
+            predictions.map((prediction) => (
+              <li key={prediction.placeId} role="option">
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => void selectPrediction(prediction)}
+                  className="block w-full px-4 py-3 text-left text-sm text-white/85 hover:bg-white/5"
+                >
+                  {prediction.description}
+                </button>
+              </li>
+            ))}
         </ul>
       )}
     </div>

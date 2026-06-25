@@ -8,17 +8,28 @@ import {
   ORDERS_CHANGED_EVENT,
 } from "@/lib/city-run/my-orders-cache";
 import { isActiveDelivery } from "@/lib/city-run/status-config";
+import type { DeliveryOrder } from "@/lib/city-run/types";
 
-export function useActiveDeliveryOrder() {
+function sortByRecent(orders: DeliveryOrder[]) {
+  return [...orders].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
+}
+
+export function pickActiveOrders(orders: DeliveryOrder[]): DeliveryOrder[] {
+  return sortByRecent(orders.filter((o) => isActiveDelivery(o.status)));
+}
+
+export function useActiveDeliveryOrders() {
   const { user, loading: authLoading } = useAuth();
-  const [orderId, setOrderId] = useState<string | null>(null);
+  const [activeOrders, setActiveOrders] = useState<DeliveryOrder[]>([]);
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (authLoading && !user) return;
 
     if (!user) {
-      setOrderId(null);
+      setActiveOrders([]);
       setChecking(false);
       return;
     }
@@ -29,8 +40,7 @@ export function useActiveDeliveryOrder() {
       setChecking(true);
       const orders = await fetchMyOrdersCached();
       if (cancelled) return;
-      const active = orders.find((o) => isActiveDelivery(o.status));
-      setOrderId(active?.id ?? null);
+      setActiveOrders(pickActiveOrders(orders));
       setChecking(false);
     }
 
@@ -49,8 +59,15 @@ export function useActiveDeliveryOrder() {
   }, [user, authLoading]);
 
   return {
-    orderId,
-    hasActiveTrip: Boolean(orderId),
+    activeOrders,
+    orderId: activeOrders[0]?.id ?? null,
+    hasActiveTrip: activeOrders.length > 0,
     loading: (authLoading && !user) || checking,
   };
+}
+
+/** @deprecated Prefer useActiveDeliveryOrders for multi-trip support. */
+export function useActiveDeliveryOrder() {
+  const { orderId, hasActiveTrip, loading } = useActiveDeliveryOrders();
+  return { orderId, hasActiveTrip, loading };
 }

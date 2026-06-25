@@ -48,7 +48,11 @@ function pickSupabaseKey(): string {
 }
 
 export const googleMapsApiKey =
-  readEnv("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY") ?? "";
+  readEnv(
+    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
+    "GOOGLE_MAPS_API_KEY",
+    "GOOGLE_MAPS_SERVER_API_KEY",
+  ) ?? "";
 
 export const supabaseUrl = pickSupabaseUrl();
 export const supabasePublishableKey = pickSupabaseKey();

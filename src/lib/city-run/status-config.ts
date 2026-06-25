@@ -35,9 +35,9 @@ export const deliveryTimeline: StatusStep[] = [
   },
   {
     status: "in_transit",
-    customerLabel: "On the way to you",
+    customerLabel: "Heading to Destination",
     riderLabel: "En route to customer",
-    customerDetail: "Your rider is on the way to the delivery address.",
+    customerDetail: "Your rider is heading to the delivery address.",
   },
   {
     status: "arrived_at_dropoff",
@@ -80,7 +80,7 @@ export const riderNextAction: Partial<Record<DeliveryOrderStatus, RiderAction>> 
     picked_up: {
       nextStatus: "in_transit",
       buttonLabel: "On my way to customer",
-      notifyText: "Customer notified: rider is on the way to you.",
+      notifyText: "Customer notified: rider is heading to destination.",
     },
     in_transit: {
       nextStatus: "arrived_at_dropoff",
@@ -114,7 +114,7 @@ export const customerStatusLabels: Record<DeliveryOrderStatus, string> = {
   rider_assigned: "Rider assigned",
   en_route_pickup: "Rider heading to pickup",
   picked_up: "Item picked up",
-  in_transit: "On the way to you",
+  in_transit: "Heading to Destination",
   arrived_at_dropoff: "Rider has arrived",
   delivered: "Delivered",
   cancelled: "Cancelled",

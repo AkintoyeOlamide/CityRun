@@ -37,6 +37,7 @@ type GoogleMapsApi = {
     Polyline: new (opts: object) => GooglePolyline;
     Size: new (width: number, height: number) => object;
     Point: new (x: number, y: number) => object;
+    LatLng: new (lat: number, lng: number) => object;
     LatLngBounds: new () => {
       extend: (pos: { lat: number; lng: number }) => void;
     };
@@ -69,6 +70,19 @@ type GoogleMapsApi = {
         ) => void;
       };
       PlacesServiceStatus: { OK: string; ZERO_RESULTS: string };
+      PlacesService: new (element: HTMLElement) => {
+        getDetails: (
+          request: { placeId: string; fields: string[] },
+          callback: (
+            place: {
+              formatted_address?: string;
+              place_id?: string;
+              geometry?: { location?: { lat: () => number; lng: () => number } };
+            } | null,
+            status: string,
+          ) => void,
+        ) => void;
+      };
     };
   };
 };
@@ -81,6 +95,35 @@ type GoogleMapsWindow = Window & {
 let mapsLoadPromise: Promise<void> | null = null;
 let placesLoadPromise: Promise<void> | null = null;
 let mapsAuthFailed = false;
+let resolvedApiKey: string | null = null;
+
+async function resolveMapsApiKey(): Promise<string> {
+  if (resolvedApiKey) return resolvedApiKey;
+  if (googleMapsApiKey) {
+    resolvedApiKey = googleMapsApiKey;
+    return resolvedApiKey;
+  }
+
+  try {
+    const res = await fetch("/api/cityrun/maps-config", { cache: "no-store" });
+    if (res.ok) {
+      const body = (await res.json()) as { apiKey?: string | null };
+      if (body.apiKey?.trim()) {
+        resolvedApiKey = body.apiKey.trim();
+        return resolvedApiKey;
+      }
+    }
+  } catch {
+    /* runtime fallback below */
+  }
+
+  return "";
+}
+
+export async function hasGoogleMapsAsync(): Promise<boolean> {
+  const key = await resolveMapsApiKey();
+  return key.length > 0;
+}
 
 function loadMapsUnified(): Promise<void> {
   if (mapsAuthFailed) return Promise.reject(new MapsAuthError());
@@ -91,10 +134,17 @@ function loadMapsUnified(): Promise<void> {
   }
 
   if (!mapsLoadPromise) {
-    mapsLoadPromise = loadScript(["places"], "maps").catch((error) => {
-      mapsLoadPromise = null;
-      throw error;
-    });
+    mapsLoadPromise = resolveMapsApiKey()
+      .then((apiKey) => {
+        if (!apiKey) {
+          throw new Error("Google Maps API key is not configured");
+        }
+        return loadScript(["places"], "maps", apiKey);
+      })
+      .catch((error) => {
+        mapsLoadPromise = null;
+        throw error;
+      });
   }
 
   placesLoadPromise = mapsLoadPromise;
@@ -123,7 +173,11 @@ function resetMapsLoadState() {
   }
 }
 
-function loadScript(libraries: string[], datasetValue: string): Promise<void> {
+function loadScript(
+  libraries: string[],
+  datasetValue: string,
+  apiKey: string,
+): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (mapsAuthFailed) return Promise.reject(new MapsAuthError());
 
@@ -150,7 +204,7 @@ function loadScript(libraries: string[], datasetValue: string): Promise<void> {
     const librariesParam = libraries.length
       ? `&libraries=${libraries.join(",")}`
       : "";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}${librariesParam}&callback=${callbackName}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}${librariesParam}&callback=${callbackName}`;
     script.async = true;
     script.dataset.cityRunMaps = datasetValue;
     script.onerror = () => {

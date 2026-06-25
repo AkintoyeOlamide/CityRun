@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
+  buildDisplayRoutePath,
   fetchDrivingRoute,
   shouldRefetchDrivingRoute,
 } from "@/lib/city-run/directions-route";
@@ -11,6 +11,7 @@ import {
   destinationMarkerIcon,
   getGoogleMaps,
   hasGoogleMaps,
+  hasGoogleMapsAsync,
   loadGoogleMapsScript,
   riderMarkerIcon,
   RIDER_MARKER_OPTIONS,
@@ -116,7 +117,10 @@ export function DeliveryMap({
   const lastRouteOriginRef = useRef<LatLng | null>(null);
   const lastRouteDestinationRef = useRef<LatLng | null>(null);
   const [ready, setReady] = useState(false);
-  const [useFallbackMap, setUseFallbackMap] = useState(!hasGoogleMaps);
+  const [useFallbackMap, setUseFallbackMap] = useState(false);
+  const [mapsBootError, setMapsBootError] = useState<"missing" | "auth" | null>(
+    null,
+  );
   const [drivingRoutePath, setDrivingRoutePath] = useState<LatLng[] | null>(null);
 
   const showRider = TRACKING_STATUSES.includes(status) && rider;
@@ -164,6 +168,20 @@ export function DeliveryMap({
   const riderLng = rider?.lng ?? null;
   const destinationLat = activeDestination?.lat ?? null;
   const destinationLng = activeDestination?.lng ?? null;
+
+  const displayRoutePath = useMemo(() => {
+    if (!shouldDrawRoute || !rider || !activeDestination) return [];
+    return buildDisplayRoutePath(drivingRoutePath, rider, activeDestination);
+  }, [
+    shouldDrawRoute,
+    rider,
+    activeDestination,
+    drivingRoutePath,
+    riderLat,
+    riderLng,
+    destinationLat,
+    destinationLng,
+  ]);
 
   useEffect(() => {
     if (
@@ -217,10 +235,23 @@ export function DeliveryMap({
   ]);
 
   useEffect(() => {
-    if (!hasGoogleMaps) return;
+    if (!hasGoogleMaps) {
+      void hasGoogleMapsAsync()
+        .then((configured) => {
+          if (!configured) {
+            setUseFallbackMap(true);
+            setMapsBootError("missing");
+          }
+        })
+        .catch(() => {
+          setUseFallbackMap(true);
+          setMapsBootError("missing");
+        });
+    }
 
     function onAuthFailure() {
       setUseFallbackMap(true);
+      setMapsBootError("auth");
       setReady(false);
     }
 
@@ -228,7 +259,14 @@ export function DeliveryMap({
 
     loadGoogleMapsScript()
       .then(() => setReady(true))
-      .catch(() => setUseFallbackMap(true));
+      .catch((error) => {
+        setUseFallbackMap(true);
+        setMapsBootError(
+          error instanceof Error && error.name === "MapsAuthError"
+            ? "auth"
+            : "missing",
+        );
+      });
 
     return () => window.removeEventListener("cityrun:maps-auth-failure", onAuthFailure);
   }, []);
@@ -319,7 +357,10 @@ export function DeliveryMap({
       upsertMarker(
         "dropoff",
         activeDestination,
-        destinationMarkerIcon(maps, "#3478f6"),
+        destinationMarkerIcon(
+          maps,
+          TO_PICKUP.includes(status) ? "#22c55e" : "#3478f6",
+        ),
         20,
       );
     }
@@ -331,13 +372,10 @@ export function DeliveryMap({
       markersRef.current.rider = undefined;
     }
 
-    const routePath =
-      shouldDrawRoute && drivingRoutePath && drivingRoutePath.length >= 2
-        ? drivingRoutePath
-        : [];
+    const routePath = displayRoutePath.length >= 2 ? displayRoutePath : [];
 
     if (routePath.length >= 2) {
-      const simpleLine = minimalLiveView || isCompactVariant;
+      const simpleLine = isCompactVariant;
       const roadPath = routePath.length > 2;
       const glowOpts = routeLineOptions(maps, true, simpleLine, roadPath);
       const lineOpts = routeLineOptions(maps, false, simpleLine, roadPath);
@@ -427,7 +465,7 @@ export function DeliveryMap({
     riderIconSize,
     interactive,
     shouldDrawRoute,
-    drivingRoutePath,
+    displayRoutePath,
   ]);
 
   const mapHeightClass = isLiveVariant
@@ -467,21 +505,18 @@ export function DeliveryMap({
   ) : null;
 
   if (useFallbackMap) {
+    const customerMessage =
+      mapsBootError === "auth"
+        ? "Live map is temporarily unavailable on this device. Your rider is still on the way — status updates above stay active."
+        : "Map preview — tracking details update automatically above.";
+
     return (
       <div className={`overflow-hidden rounded-2xl border border-white/10 ${className}`}>
-        <div className="border-b border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Google Maps unavailable — showing OpenStreetMap fallback (no bike marker).
-          {hasGoogleMaps ? (
-            <>
-              {" "}
-              <Link href="/cityrun/map-check" className="font-semibold underline">
-                Run map check
-              </Link>
-            </>
-          ) : (
-            " Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in .env.local."
-          )}
-        </div>
+        {!isPreviewVariant && (
+          <div className="border-b border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/70">
+            {customerMessage}
+          </div>
+        )}
         <iframe
           title="Delivery map"
           src={fallbackMapUrl}
@@ -493,9 +528,27 @@ export function DeliveryMap({
     );
   }
 
+  if (!ready) {
+    return (
+      <div className={`overflow-hidden rounded-2xl border border-white/10 ${className}`}>
+        <div
+          className={`${mapHeightClass} animate-pulse bg-white/[0.06]`}
+          aria-label="Loading map"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`overflow-hidden rounded-2xl border border-white/10 ${className}`}>
-      <div ref={containerRef} className={mapHeightClass} />
+      <div className="relative">
+        <div ref={containerRef} className={mapHeightClass} />
+        {liveTracking && rider && displayRoutePath.length >= 2 && (
+          <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/60 px-2.5 py-1.5 text-[0.65rem] font-semibold text-white backdrop-blur-sm">
+            Route to {TO_PICKUP.includes(status) ? "pickup" : "destination"}
+          </div>
+        )}
+      </div>
       {legend}
     </div>
   );

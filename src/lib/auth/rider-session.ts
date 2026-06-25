@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import { resolveSessionSecret } from "@/lib/auth/session-secrets";
 import { getRiderById } from "@/lib/city-run/riders-store";
 import type { RiderPublic } from "@/lib/city-run/types";
 import { toPublicRider } from "@/lib/city-run/riders-store";
@@ -8,13 +9,7 @@ const COOKIE_NAME = "city_run_rider";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 14; // 14 days
 
 function sessionSecret(): string {
-  const secret = process.env.CITY_RUN_RIDER_SESSION_SECRET?.trim();
-  if (!secret) {
-    throw new Error(
-      "CITY_RUN_RIDER_SESSION_SECRET is not configured. Set it in .env.local or Vercel.",
-    );
-  }
-  return secret;
+  return resolveSessionSecret("CITY_RUN_RIDER_SESSION_SECRET", "rider");
 }
 
 function sessionTokenForRiderId(riderId: string): string {

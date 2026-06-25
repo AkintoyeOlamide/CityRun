@@ -36,7 +36,7 @@ export function LiveTrackingStatus({ order }: LiveTrackingStatusProps) {
   const heading =
     order.status === "rider_assigned" || order.status === "en_route_pickup"
       ? "Heading to pickup"
-      : "Heading to you";
+      : "Heading to Destination";
 
   const distanceLabel = destination
     ? formatDistance(distanceMeters(order.riderLocation, destination))

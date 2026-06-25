@@ -9,12 +9,13 @@ import {
   Store,
 } from "lucide-react";
 import { CityRunActiveDeliveryCard } from "@/components/city-run/CityRunActiveDeliveryCard";
+import { CustomerActiveTripsList } from "@/components/city-run/CustomerActiveTripsList";
 import { CityRunBottomNav } from "@/components/city-run/CityRunBottomNav";
 import { CityRunHeader } from "@/components/city-run/CityRunHeader";
 import { DeliveryTypeShortcuts } from "@/components/city-run/DeliveryTypeShortcuts";
 import { useAuth } from "@/lib/auth/use-auth";
 import { isBusinessAccount, isVendorProfile } from "@/lib/city-run/account-utils";
-import { useActiveDeliveryOrder } from "@/lib/city-run/use-active-delivery-order";
+import { useActiveDeliveryOrders } from "@/lib/city-run/use-active-delivery-order";
 
 const deliveryTypes: {
   title: string;
@@ -50,7 +51,8 @@ const deliveryTypes: {
 
 export function CityRunApp() {
   const { user, profile } = useAuth();
-  const { orderId, hasActiveTrip, loading: activeLoading } = useActiveDeliveryOrder();
+  const { activeOrders, orderId, hasActiveTrip, loading: activeLoading } =
+    useActiveDeliveryOrders();
   const isVendor = isVendorProfile(profile);
   const isBusiness = isBusinessAccount(profile, user);
 
@@ -80,11 +82,25 @@ export function CityRunApp() {
             )}
 
             <div className={hasActiveTrip ? "mt-2 space-y-2" : "mt-8 space-y-4"}>
-              <CityRunActiveDeliveryCard
-                expanded={hasActiveTrip}
-                orderId={orderId}
-                loading={activeLoading}
-              />
+              {activeOrders.length === 1 ? (
+                <CityRunActiveDeliveryCard
+                  expanded={hasActiveTrip}
+                  orderId={orderId}
+                  loading={activeLoading}
+                />
+              ) : hasActiveTrip ? (
+                <CustomerActiveTripsList
+                  orders={activeOrders}
+                  compact
+                  viewAllHref="/cityrun/trips"
+                />
+              ) : (
+                <CityRunActiveDeliveryCard
+                  expanded={false}
+                  orderId={null}
+                  loading={activeLoading}
+                />
+              )}
 
               {!hasActiveTrip && (
                 <Link

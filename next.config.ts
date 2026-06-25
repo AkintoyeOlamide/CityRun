@@ -3,6 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
+  /** Browser map uses NEXT_PUBLIC_* — fall back to GOOGLE_MAPS_API_KEY on Vercel. */
+  env: {
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
+      process.env.GOOGLE_MAPS_API_KEY?.trim() ||
+      process.env.GOOGLE_MAPS_SERVER_API_KEY?.trim() ||
+      "",
+  },
   experimental: {
     optimizePackageImports: [
       "lucide-react",

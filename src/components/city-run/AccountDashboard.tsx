@@ -17,10 +17,8 @@ import {
 } from "@/lib/city-run/status-config";
 import { fetchMyOrdersCached, invalidateMyOrdersCache, ORDERS_CHANGED_EVENT } from "@/lib/city-run/my-orders-cache";
 import type { DeliveryOrder } from "@/lib/city-run/types";
-import {
-  CustomerActiveRiderCard,
-  pickPrimaryActiveOrder,
-} from "@/components/city-run/CustomerActiveRiderCard";
+import { CustomerActiveTripsList } from "@/components/city-run/CustomerActiveTripsList";
+import { pickActiveOrders } from "@/lib/city-run/use-active-delivery-order";
 
 const kindIcons = {
   send: Send,
@@ -120,7 +118,7 @@ export function AccountDashboard({
   }
 
   const filtered = filterOrders(orders, tab);
-  const activeRiderOrder = pickPrimaryActiveOrder(orders);
+  const activeTrips = pickActiveOrders(orders);
   const isBusiness = isBusinessAccount(profile, user);
   const initials = (profile?.fullName || user?.email || "?")
     .slice(0, 2)
@@ -274,8 +272,11 @@ export function AccountDashboard({
                 </button>
               </div>
 
-              {activeRiderOrder && (
-                <CustomerActiveRiderCard order={activeRiderOrder} />
+              {activeTrips.length > 0 && (
+                <CustomerActiveTripsList
+                  orders={activeTrips}
+                  viewAllHref={activeTrips.length > 1 ? "/cityrun/trips" : undefined}
+                />
               )}
 
               {(profile?.accountType === "business" ||
@@ -292,12 +293,20 @@ export function AccountDashboard({
               <div>
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Your orders</h2>
-                  <Link
-                    href="/cityrun/send"
-                    className="text-xs font-semibold text-accent"
-                  >
-                    New delivery
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/cityrun/trips"
+                      className="text-xs font-semibold text-accent"
+                    >
+                      All trips
+                    </Link>
+                    <Link
+                      href="/cityrun/send"
+                      className="text-xs font-semibold text-white/50"
+                    >
+                      New delivery
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="mt-3 flex gap-2">

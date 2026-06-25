@@ -39,7 +39,7 @@ export function OrderTracking({ orderId }: { orderId: string }) {
   const isLive = order ? isActiveDelivery(order.status) : false;
 
   return (
-    <CityRunShell title="Track delivery" backHref="/cityrun/account">
+    <CityRunShell title="Track delivery" backHref="/cityrun/trips">
       <div className="cr-mesh-page px-4 py-5 pb-10">
         {loading && (
           <div className="space-y-4">
@@ -56,7 +56,7 @@ export function OrderTracking({ orderId }: { orderId: string }) {
               This delivery may have expired or the link is incorrect.
             </p>
             <Link
-              href="/cityrun/account"
+              href="/cityrun/trips"
               className="cr-text-label mt-5 inline-flex items-center gap-2 text-sm font-bold text-accent"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -172,7 +172,7 @@ export function OrderTracking({ orderId }: { orderId: string }) {
             )}
 
             <Link
-              href="/cityrun/account"
+              href="/cityrun/trips"
               className="cr-text-label block rounded-2xl border border-white/15 bg-white/8 py-3.5 text-center text-sm font-bold transition-colors hover:bg-white/12"
             >
               Back to my orders

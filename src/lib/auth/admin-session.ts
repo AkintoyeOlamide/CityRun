@@ -4,18 +4,13 @@ import {
   getAdminPassword,
   getAdminUsername,
 } from "@/lib/auth/admin-credentials";
+import { resolveSessionSecret } from "@/lib/auth/session-secrets";
 
 const COOKIE_NAME = "city_run_admin";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function sessionSecret(): string {
-  const secret = process.env.CITY_RUN_ADMIN_SESSION_SECRET?.trim();
-  if (!secret) {
-    throw new Error(
-      "CITY_RUN_ADMIN_SESSION_SECRET is not configured. Set it in .env.local or Vercel.",
-    );
-  }
-  return secret;
+  return resolveSessionSecret("CITY_RUN_ADMIN_SESSION_SECRET", "admin");
 }
 
 function expectedSessionToken(): string {

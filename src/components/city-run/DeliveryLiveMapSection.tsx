@@ -61,7 +61,9 @@ export function DeliveryLiveMapSection({
           dropoff={dropoff}
           rider={order.riderLocation}
           status={order.status}
-          variant={isLive ? "live" : "default"}
+          variant={
+            isLive && (order.riderLocation || order.riderId) ? "live" : "default"
+          }
           className={mapClassName}
         />
       )}      {trackingStatuses.has(order.status) && !order.riderLocation && (

@@ -421,6 +421,9 @@ export async function updateRiderProfile(
   );
 }
 
+const RIDER_SELECT_AUTH =
+  "id, username, password_hash, full_name, phone, login_password, active, last_location, location_updated_at, created_at, updated_at";
+
 export async function getRiderByUsername(
   username: string,
 ): Promise<RiderRecord | undefined> {
@@ -431,25 +434,32 @@ export async function getRiderByUsername(
     return [...readFileStore().values()].find((r) => r.username === normalized);
   }
 
-  const rows = await fetchAllRiderRows();
-  const row = rows.find((r) => r.username === normalized);
-  if (!row) return undefined;
-
   const supabase = createAdminClient();
-  const hashRow = await supabase
+  let { data, error } = await supabase
     .from("riders")
-    .select("password_hash")
+    .select(RIDER_SELECT_AUTH)
     .eq("username", normalized)
     .maybeSingle();
 
-  if (
-    hashRow.data &&
-    typeof (hashRow.data as { password_hash?: string }).password_hash === "string"
-  ) {
-    row.password_hash = (hashRow.data as { password_hash: string }).password_hash;
+  if (error && isMissingColumnError(error)) {
+    ({ data, error } = await supabase
+      .from("riders")
+      .select("id, username, password_hash, full_name, phone, active, created_at, updated_at")
+      .eq("username", normalized)
+      .maybeSingle());
   }
 
-  return rowToRider(row);
+  if (error || !data) return undefined;
+
+  const row = data as RiderRow;
+  if (!row.password_hash) return undefined;
+
+  return rowToRider({
+    ...row,
+    login_password: row.login_password ?? null,
+    last_location: row.last_location ?? null,
+    location_updated_at: row.location_updated_at ?? null,
+  });
 }
 
 export async function getRiderById(id: string): Promise<RiderRecord | undefined> {
