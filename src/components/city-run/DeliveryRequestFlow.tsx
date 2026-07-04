@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CityRunShell } from "@/components/city-run/CityRunShell";
+import { BusinessPickupField } from "@/components/city-run/BusinessPickupField";
 import { flowConfig } from "@/lib/city-run/config";
 import { isBusinessAccount } from "@/lib/city-run/account-utils";
 import { useAuth } from "@/lib/auth/use-auth";
@@ -74,7 +75,6 @@ export function DeliveryRequestFlow({ kind }: DeliveryRequestFlowProps) {
 
   useEffect(() => {
     if (!isBusiness || !businessAddress?.formatted) return;
-    if (kind === "send") setPickup(businessAddress);
     if (kind === "receive") setDropoff(businessAddress);
   }, [isBusiness, businessAddress, kind]);
 
@@ -211,9 +211,25 @@ export function DeliveryRequestFlow({ kind }: DeliveryRequestFlowProps) {
 
         {step === "addresses" && (
           <div className="space-y-5">
-            {isBusinessSend && pickupLocked && (
-              <LockedAddressCard label="Pickup" address={pickup} />
-            )}
+            {isBusinessSend &&
+              (pickupLocked && businessAddress ? (
+                <BusinessPickupField
+                  label="Pickup"
+                  defaultAddress={businessAddress}
+                  value={pickup}
+                  onChange={setPickup}
+                  placeholder={config.pickupPlaceholder}
+                />
+              ) : (
+                <AddressAutocomplete
+                  id="pickup"
+                  label="Pickup"
+                  placeholder={config.pickupPlaceholder}
+                  value={pickup}
+                  onChange={setPickup}
+                  showCurrentLocation={false}
+                />
+              ))}
 
             {!isBusinessSend &&
               (pickupLocked ? (

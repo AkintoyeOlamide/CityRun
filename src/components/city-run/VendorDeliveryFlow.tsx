@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { CityRunShell } from "@/components/city-run/CityRunShell";
+import { BusinessPickupField } from "@/components/city-run/BusinessPickupField";
 import { AddressAutocomplete } from "@/components/city-run/AddressAutocomplete";
 import { ImageUploadField } from "@/components/city-run/ImageUploadField";
 import { useAuth } from "@/lib/auth/use-auth";
@@ -34,8 +35,12 @@ function newStop(): DeliveryStop {
 export function VendorDeliveryFlow() {
   const router = useRouter();
   const { profile } = useAuth();
-  const pickup = profile?.businessAddress;
+  const businessAddress = profile?.businessAddress;
   const savedClients = profile?.savedClients ?? [];
+
+  const [pickup, setPickup] = useState<AddressValue>(
+    () => businessAddress ?? emptyAddress(),
+  );
 
   const [step, setStep] = useState<Step>("deliveries");
   const [stops, setStops] = useState<DeliveryStop[]>([newStop()]);
@@ -93,6 +98,7 @@ export function VendorDeliveryFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           kind: "send",
+          pickup,
           stops: stops.map((s) => ({
             dropoff: s.dropoff,
             contactPhone: s.contactPhone.trim(),
@@ -123,18 +129,21 @@ export function VendorDeliveryFlow() {
       <div className="px-4 py-5 pb-8">
         <StepIndicator step={step} multi={stops.length > 1} />
 
-        {!pickup?.formatted && (
+        {!businessAddress?.formatted && (
           <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
             Your pickup address is not set yet. Contact City Run support.
           </p>
         )}
 
-        {pickup?.formatted && (
-          <div className="mb-5 rounded-xl border border-accent/25 bg-accent/10 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-accent/80">
-              Pickup (your shop)
-            </p>
-            <p className="mt-1 text-sm">{pickup.formatted}</p>
+        {businessAddress?.formatted && (
+          <div className="mb-5">
+            <BusinessPickupField
+              label="Pickup (your shop)"
+              defaultAddress={businessAddress}
+              value={pickup}
+              onChange={setPickup}
+              placeholder="Where should we collect items?"
+            />
           </div>
         )}
 

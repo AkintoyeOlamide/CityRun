@@ -14,6 +14,7 @@ type DeliveryLiveMapSectionProps = {
   titleClassName?: string;
   waitingClassName?: string;
   waitingMessage?: string;
+  showWaitingMessage?: boolean;
   showTitle?: boolean;
 };
 
@@ -25,6 +26,7 @@ export function DeliveryLiveMapSection({
   titleClassName = "cr-text-label text-sm font-bold uppercase tracking-wide",
   waitingClassName = "cr-text-muted text-sm",
   waitingMessage = "Locating your rider… GPS appears as soon as they share location from their phone.",
+  showWaitingMessage = true,
   showTitle = true,
 }: DeliveryLiveMapSectionProps) {
   const isLive = isActiveDelivery(order.status);
@@ -66,9 +68,12 @@ export function DeliveryLiveMapSection({
           }
           className={mapClassName}
         />
-      )}      {trackingStatuses.has(order.status) && !order.riderLocation && (
-        <p className={waitingClassName}>{waitingMessage}</p>
       )}
+      {showWaitingMessage &&
+        trackingStatuses.has(order.status) &&
+        !order.riderLocation && (
+          <p className={waitingClassName}>{waitingMessage}</p>
+        )}
       {isLive && order.riderLocation && !pickup && !dropoff && (
         <p className="cr-text-muted px-1 text-xs">
           Live rider GPS — delivery addresses are shown when map coordinates are available.

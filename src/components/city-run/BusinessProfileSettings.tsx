@@ -204,7 +204,7 @@ export function BusinessProfileSettings({
             <p className="mt-1 text-sm">{profile.businessAddress.formatted}</p>
             {isBusiness && (
               <p className="mt-2 text-xs text-white/45">
-                Used automatically when you send items.
+                Used by default when you send items. You can choose a different pickup on each order.
               </p>
             )}
           </div>

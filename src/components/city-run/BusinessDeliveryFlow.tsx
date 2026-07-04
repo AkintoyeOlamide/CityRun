@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2 } from "lucide-react";
 import { CityRunShell } from "@/components/city-run/CityRunShell";
+import { BusinessPickupField } from "@/components/city-run/BusinessPickupField";
 import { AddressAutocomplete } from "@/components/city-run/AddressAutocomplete";
 import { useAuth } from "@/lib/auth/use-auth";
 import {
@@ -70,10 +71,14 @@ export function BusinessDeliveryFlow() {
     () => mergeProfileWithUserMetadata(profile, user),
     [profile, user],
   );
-  const pickup = resolveBusinessPickup(mergedProfile, user);
+  const defaultPickup = useMemo(
+    () => resolveBusinessPickup(mergedProfile, user),
+    [mergedProfile, user],
+  );
   const savedClients = mergedProfile?.savedClients ?? [];
   const natureOfGoods = resolveNatureOfGoods(mergedProfile, user);
 
+  const [pickup, setPickup] = useState<AddressValue>(() => emptyAddress());
   const [stops, setStops] = useState<DeliveryStop[]>([newStop()]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -114,7 +119,7 @@ export function BusinessDeliveryFlow() {
     setStops((prev) => (prev.length <= 1 ? prev : prev.filter((s) => s.id !== id)));
   }
 
-  const profileReady = Boolean(pickup?.formatted && natureOfGoods);
+  const profileReady = Boolean(defaultPickup?.formatted && natureOfGoods);
   const validationError = validateBusinessSend(pickup, natureOfGoods, stops);
   const readyToSubmit = profileReady && validationError === null;
 
@@ -134,6 +139,7 @@ export function BusinessDeliveryFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           kind: "send",
+          pickup,
           stops: stops.map((s) => ({
             dropoff: s.dropoff,
             contactPhone: s.receiverPhone.trim(),
@@ -171,7 +177,7 @@ export function BusinessDeliveryFlow() {
           <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
             <p className="font-medium">Complete your business profile to send items</p>
             <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-amber-200/90">
-              {!pickup?.formatted && <li>Pickup address (from registration)</li>}
+              {!defaultPickup?.formatted && <li>Pickup address (from registration)</li>}
               {!natureOfGoods && <li>Nature of goods</li>}
             </ul>
             <Link
@@ -183,18 +189,18 @@ export function BusinessDeliveryFlow() {
           </div>
         )}
 
-        {pickup?.formatted && (
-          <div className="mb-5 rounded-xl border border-accent/25 bg-accent/10 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-accent/80">
-              Pickup (your business)
-            </p>
-            <p className="mt-1 text-sm">{pickup.formatted}</p>
+        {defaultPickup?.formatted && (
+          <div className="mb-5">
+            <BusinessPickupField
+              label="Pickup (your business)"
+              defaultAddress={defaultPickup}
+              value={pickup}
+              onChange={setPickup}
+              placeholder="Where should we collect items?"
+            />
             {natureOfGoods && (
               <p className="mt-2 text-xs text-white/55">Sending: {natureOfGoods}</p>
             )}
-            <p className="mt-2 text-xs text-white/45">
-              Pickup is from your registered business address — no need to enter it again.
-            </p>
           </div>
         )}
 

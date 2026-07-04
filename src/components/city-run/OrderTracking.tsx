@@ -78,8 +78,7 @@ export function OrderTracking({ orderId }: { orderId: string }) {
             <DeliveryLiveMapSection
               order={order}
               mapClassName="cr-glow-ring"
-              waitingClassName="cr-glass-card cr-text-muted rounded-2xl px-4 py-3 text-sm"
-              waitingMessage="Waiting for your rider's live GPS. They need to allow location on their phone while delivering your order."
+              showWaitingMessage={false}
             />
 
             <section className="cr-glass-card cr-glow-ring overflow-hidden rounded-2xl">

@@ -42,7 +42,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const pickup = resolveBusinessPickup(profile, user);
+    const body = (await request.json()) as {
+      kind?: DeliveryKind;
+      pickup?: AddressValue;
+      stops?: BatchStop[];
+      itemDescription?: string;
+      itemSize?: "small" | "medium" | "large";
+      notes?: string;
+      itemPhotoUrl?: string;
+    };
+
+    const profilePickup = resolveBusinessPickup(profile, user);
+    const requestPickup =
+      body.pickup?.formatted && body.pickup.formatted.trim().length > 5
+        ? body.pickup
+        : null;
+    const pickup = requestPickup ?? profilePickup;
+
     if (!pickup?.formatted || pickup.formatted.trim().length <= 5) {
       return NextResponse.json(
         {
@@ -52,15 +68,6 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-
-    const body = (await request.json()) as {
-      kind?: DeliveryKind;
-      stops?: BatchStop[];
-      itemDescription?: string;
-      itemSize?: "small" | "medium" | "large";
-      notes?: string;
-      itemPhotoUrl?: string;
-    };
 
     const kind: DeliveryKind = "send";
     const stops = body.stops ?? [];
