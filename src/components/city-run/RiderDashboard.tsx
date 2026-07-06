@@ -26,6 +26,10 @@ import {
   OpsStatusBadge,
 } from "@/components/city-run/ops/OpsUI";
 import { toTelHref } from "@/lib/city-run/phone";
+import {
+  buildGoogleMapsNavigateUrl,
+  hasNavigableAddress,
+} from "@/lib/city-run/maps-navigate";
 import { useOrdersRealtime } from "@/lib/city-run/use-orders-realtime";
 import { useRiderLiveTracking } from "@/lib/city-run/use-rider-location";
 import { riderNextAction } from "@/lib/city-run/status-config";
@@ -258,6 +262,9 @@ function OrderCard({
     order.status === "arrived_at_dropoff"
       ? order.dropoff
       : order.pickup;
+  const navigateUrl = buildGoogleMapsNavigateUrl(navigateTarget, {
+    travelMode: "driving",
+  });
 
   const showActions = filter !== "history" && nextAction;
   const customerTel = toTelHref(order.contactPhone);
@@ -341,15 +348,15 @@ function OrderCard({
             Call customer
           </a>
         )}
-        <Link
-          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(navigateTarget.formatted)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2.5 text-xs font-bold text-white transition-colors hover:bg-white/[0.08] sm:flex-none"
-        >
-          <Navigation className="h-3.5 w-3.5" />
-          Navigate
-        </Link>
+        {navigateUrl && hasNavigableAddress(navigateTarget) && (
+          <a
+            href={navigateUrl}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2.5 text-xs font-bold text-white transition-colors hover:bg-white/[0.08] sm:flex-none"
+          >
+            <Navigation className="h-3.5 w-3.5" />
+            Navigate
+          </a>
+        )}
         <Link
           href={`/cityrun/order/${order.id}`}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2.5 text-xs font-bold text-white/75 transition-colors hover:bg-white/[0.08] sm:flex-none"

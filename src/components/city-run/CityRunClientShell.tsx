@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { CustomerNotificationListener } from "@/components/city-run/CustomerNotificationListener";
 import type { InitialAuthState } from "@/lib/auth/server-auth";
 import { AuthProvider, useAuth } from "@/lib/auth/auth-provider";
@@ -39,6 +39,14 @@ function CityRunDeferredPush() {
   return <CityRunPushRegister />;
 }
 
+const WelcomeFundWalletPrompt = dynamic(
+  () =>
+    import("@/components/city-run/WelcomeFundWalletPrompt").then((m) => ({
+      default: m.WelcomeFundWalletPrompt,
+    })),
+  { ssr: false },
+);
+
 export function CityRunClientShell({
   children,
   initialAuthState,
@@ -51,6 +59,9 @@ export function CityRunClientShell({
       <CityRunNotificationProvider>
         <CityRunCustomerSync />
         <CityRunDeferredPush />
+        <Suspense fallback={null}>
+          <WelcomeFundWalletPrompt />
+        </Suspense>
         {children}
       </CityRunNotificationProvider>
     </AuthProvider>

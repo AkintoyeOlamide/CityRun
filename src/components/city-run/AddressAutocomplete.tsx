@@ -8,10 +8,10 @@ import {
   resolveAddressFromCurrentLocation,
 } from "@/lib/city-run/use-current-location-address";
 import {
-  getGoogleMaps,
-  lagosLocationBias,
-  loadGooglePlacesScript,
-} from "@/lib/city-run/google-maps";
+  fetchClientPlacePredictions,
+  resolveClientPlaceDetails,
+} from "@/lib/city-run/places-client";
+import { loadGooglePlacesScript } from "@/lib/city-run/google-maps";
 import { isGeolocationSupported } from "@/lib/city-run/rider-geolocation";
 
 type AddressAutocompleteProps = {
@@ -37,36 +37,6 @@ type Prediction = {
   lng?: number;
 };
 
-async function resolveGooglePlaceDetails(placeId: string): Promise<AddressValue | null> {
-  const maps = getGoogleMaps();
-  const places = maps?.places;
-  if (!places?.PlacesService || !places.PlacesServiceStatus) return null;
-
-  const service = new places.PlacesService(document.createElement("div"));
-
-  return new Promise((resolve) => {
-    service.getDetails(
-      { placeId, fields: ["formatted_address", "geometry", "place_id"] },
-      (place, status) => {
-        if (
-          status !== places.PlacesServiceStatus!.OK ||
-          !place?.formatted_address
-        ) {
-          resolve(null);
-          return;
-        }
-
-        resolve({
-          formatted: place.formatted_address,
-          placeId: place.place_id,
-          lat: place.geometry?.location?.lat(),
-          lng: place.geometry?.location?.lng(),
-        });
-      },
-    );
-  });
-}
-
 async function fetchServerPredictions(input: string): Promise<Prediction[]> {
   const res = await fetch(
     `/api/cityrun/places/autocomplete?input=${encodeURIComponent(input)}`,
@@ -76,43 +46,18 @@ async function fetchServerPredictions(input: string): Promise<Prediction[]> {
   return body.predictions ?? [];
 }
 
-function fetchGooglePredictions(input: string): Promise<Prediction[] | null> {
-  const maps = getGoogleMaps();
-  const places = maps?.places;
-  if (!places?.AutocompleteService || !places.PlacesServiceStatus) {
-    return Promise.resolve(null);
+function mergePredictions(primary: Prediction[], secondary: Prediction[]): Prediction[] {
+  const seen = new Set<string>();
+  const merged: Prediction[] = [];
+
+  for (const prediction of [...primary, ...secondary]) {
+    const key = prediction.placeId || prediction.description.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(prediction);
   }
 
-  return new Promise((resolve) => {
-    const service = new places.AutocompleteService();
-    const center = new maps!.LatLng(lagosLocationBias.lat, lagosLocationBias.lng);
-
-    service.getPlacePredictions(
-      {
-        input,
-        componentRestrictions: { country: "ng" },
-        location: center,
-        radius: lagosLocationBias.radiusMeters,
-      },
-      (results, status) => {
-        if (
-          status !== places!.PlacesServiceStatus!.OK ||
-          !results ||
-          results.length === 0
-        ) {
-          resolve([]);
-          return;
-        }
-
-        resolve(
-          results.map((result) => ({
-            description: result.description,
-            placeId: result.place_id,
-          })),
-        );
-      },
-    );
-  });
+  return merged;
 }
 
 export function AddressAutocomplete({
@@ -160,8 +105,14 @@ export function AddressAutocomplete({
         googleReadyRef.current = false;
       });
 
+    function onMapsAuthFailure() {
+      googleReadyRef.current = false;
+    }
+    window.addEventListener("cityrun:maps-auth-failure", onMapsAuthFailure);
+
     return () => {
       cancelled = true;
+      window.removeEventListener("cityrun:maps-auth-failure", onMapsAuthFailure);
     };
   }, []);
 
@@ -233,8 +184,6 @@ export function AddressAutocomplete({
       const requestId = ++requestIdRef.current;
 
       try {
-        let next: Prediction[] = [];
-
         if (!googleReadyRef.current) {
           try {
             await loadGooglePlacesScript();
@@ -244,16 +193,14 @@ export function AddressAutocomplete({
           }
         }
 
-        if (googleReadyRef.current) {
-          const googleResults = await fetchGooglePredictions(trimmed);
-          if (googleResults !== null) {
-            next = googleResults;
-          }
-        }
+        const [clientResults, serverResults] = await Promise.all([
+          googleReadyRef.current
+            ? fetchClientPlacePredictions(trimmed).catch(() => [] as Prediction[])
+            : Promise.resolve([] as Prediction[]),
+          fetchServerPredictions(trimmed).catch(() => [] as Prediction[]),
+        ]);
 
-        if (next.length === 0) {
-          next = await fetchServerPredictions(trimmed);
-        }
+        const next = mergePredictions(clientResults, serverResults);
 
         if (requestId !== requestIdRef.current) return;
         setPredictions(next);
@@ -284,8 +231,7 @@ export function AddressAutocomplete({
     try {
       if (!prediction.placeId.startsWith("nominatim:")) {
         try {
-          await loadGooglePlacesScript();
-          const googleAddress = await resolveGooglePlaceDetails(prediction.placeId);
+          const googleAddress = await resolveClientPlaceDetails(prediction.placeId);
           if (googleAddress) {
             onChange(googleAddress);
             return;
@@ -363,7 +309,19 @@ export function AddressAutocomplete({
         </label>
         <div className="rounded-xl border border-accent/25 bg-accent/10 px-4 py-3.5">
           {locating ? (
-            <p className="text-sm text-white/55">Getting your location…</p>
+            <div>
+              <p className="text-sm text-white/55">Getting your location…</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setLocating(false);
+                  setEditMode(true);
+                }}
+                className="mt-2 text-sm font-semibold text-accent transition-colors hover:text-accent-light"
+              >
+                Enter address manually
+              </button>
+            </div>
           ) : (
             <p className="text-sm leading-relaxed text-white/90">{value.formatted}</p>
           )}

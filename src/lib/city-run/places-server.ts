@@ -18,16 +18,82 @@ const lagosLocationBias = {
   radiusMeters: 45_000,
 };
 
-function readMapsKey() {
-  return (
-    process.env.GOOGLE_MAPS_SERVER_API_KEY?.trim() ||
-    process.env.GOOGLE_MAPS_API_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
-    ""
-  );
+function readServerMapsKey(): string {
+  return process.env.GOOGLE_MAPS_SERVER_API_KEY?.trim() || "";
 }
 
-async function googleAutocomplete(input: string): Promise<PlacePrediction[] | null> {
+/** Browser-restricted keys cannot be used from the server — skip them. */
+function readMapsKey() {
+  return readServerMapsKey();
+}
+
+async function googleAutocompleteNew(input: string): Promise<PlacePrediction[] | null> {
+  const key = readServerMapsKey();
+  if (!key) return null;
+
+  const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": key,
+    },
+    body: JSON.stringify({
+      input,
+      includedRegionCodes: ["NG"],
+      languageCode: "en",
+      locationBias: {
+        circle: {
+          center: { latitude: lagosLocationBias.lat, longitude: lagosLocationBias.lng },
+          radius: lagosLocationBias.radiusMeters,
+        },
+      },
+    }),
+    cache: "no-store",
+  });
+
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as {
+    suggestions?: Array<{
+      placePrediction?: {
+        placeId?: string;
+        place?: string;
+        text?: { text?: string };
+        structuredFormat?: {
+          mainText?: { text?: string };
+          secondaryText?: { text?: string };
+        };
+      };
+    }>;
+  };
+
+  const predictions: PlacePrediction[] = [];
+
+  for (const suggestion of data.suggestions ?? []) {
+    const prediction = suggestion.placePrediction;
+    if (!prediction) continue;
+
+    const placeId =
+      prediction.placeId?.trim() ||
+      prediction.place?.replace(/^places\//, "").trim() ||
+      "";
+    if (!placeId) continue;
+
+    const description =
+      prediction.text?.text?.trim() ||
+      [prediction.structuredFormat?.mainText?.text, prediction.structuredFormat?.secondaryText?.text]
+        .filter(Boolean)
+        .join(", ");
+
+    if (!description) continue;
+
+    predictions.push({ description, placeId });
+  }
+
+  return predictions;
+}
+
+async function googleAutocompleteLegacy(input: string): Promise<PlacePrediction[] | null> {
   const key = readMapsKey();
   if (!key) return null;
 
@@ -88,17 +154,13 @@ async function googlePlaceDetails(placeId: string): Promise<AddressValue | null>
   };
 }
 
-async function nominatimAutocomplete(input: string): Promise<PlacePrediction[]> {
-  const searchQuery = /\blagos\b/i.test(input) ? input : `${input}, Lagos, Nigeria`;
-
+async function nominatimSearch(query: string): Promise<PlacePrediction[]> {
   const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("q", searchQuery);
+  url.searchParams.set("q", query);
   url.searchParams.set("format", "json");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("countrycodes", "ng");
   url.searchParams.set("limit", "6");
-  url.searchParams.set("viewbox", "3.05,6.35,3.75,6.75");
-  url.searchParams.set("bounded", "0");
 
   const res = await fetch(url.toString(), {
     headers: {
@@ -125,15 +187,34 @@ async function nominatimAutocomplete(input: string): Promise<PlacePrediction[]> 
   }));
 }
 
+async function nominatimAutocomplete(input: string): Promise<PlacePrediction[]> {
+  const queries = [input];
+  if (!/\blagos\b/i.test(input)) {
+    queries.push(`${input}, Lagos, Nigeria`);
+  }
+
+  for (const query of queries) {
+    const results = await nominatimSearch(query);
+    if (results.length > 0) return results;
+  }
+
+  return [];
+}
+
 export async function autocompletePlaces(input: string): Promise<AutocompleteResult> {
   const trimmed = input.trim();
   if (trimmed.length < 3) {
     return { predictions: [], source: "none" };
   }
 
-  const google = await googleAutocomplete(trimmed);
-  if (google !== null) {
-    return { predictions: google, source: "google" };
+  const googleNew = await googleAutocompleteNew(trimmed);
+  if (googleNew !== null && googleNew.length > 0) {
+    return { predictions: googleNew, source: "google" };
+  }
+
+  const googleLegacy = await googleAutocompleteLegacy(trimmed);
+  if (googleLegacy !== null && googleLegacy.length > 0) {
+    return { predictions: googleLegacy, source: "google" };
   }
 
   const nominatim = await nominatimAutocomplete(trimmed);

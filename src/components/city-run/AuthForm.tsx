@@ -120,7 +120,9 @@ export function AuthForm({ onSuccess, defaultMode = "signin" }: AuthFormProps) {
         if (!res.ok) throw new Error(body.error ?? "Could not create account");
 
         const redirectTo =
-          body.accountType === "business" ? "/cityrun/account" : "/cityrun/home";
+          body.accountType === "business"
+            ? "/cityrun/account?welcomeWallet=1"
+            : "/cityrun/home?welcomeWallet=1";
         finishAuth("customer", redirectTo);
         return;
       }

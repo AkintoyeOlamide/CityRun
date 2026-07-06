@@ -678,3 +678,18 @@ body {
     transform: none;
   }
 }
+
+@keyframes fund-success-pop {
+  0% {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.success-pop {
+  animation: fund-success-pop 0.45s ease-out;
+}

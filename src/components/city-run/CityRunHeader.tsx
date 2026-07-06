@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ChevronRight, User } from "lucide-react";
+import { Bell, ChevronRight, User, Wallet } from "lucide-react";
 import { useAuth } from "@/lib/auth/use-auth";
+import { formatNairaFromKobo } from "@/lib/city-run/pricing";
+import { useWalletSummary } from "@/lib/city-run/use-wallet-summary";
 
 function getInitials(name: string, email?: string) {
   const trimmed = name.trim();
@@ -31,6 +33,7 @@ type CityRunHeaderProps = {
 
 export function CityRunHeader({ variant = "default" }: CityRunHeaderProps) {
   const { user, profile, loading } = useAuth();
+  const { wallet, loading: walletLoading, trips } = useWalletSummary(Boolean(user));
   const isHome = variant === "home";
 
   if (loading) {
@@ -76,6 +79,23 @@ export function CityRunHeader({ variant = "default" }: CityRunHeaderProps) {
         </Link>
 
         <div className="flex items-center gap-1.5">
+          {user && (
+            <Link
+              href="/cityrun/account?fundWallet=1"
+              className="flex h-8 items-center gap-1.5 rounded-full border border-cr-yellow/45 bg-cr-yellow-muted px-2.5 text-cr-yellow shadow-[0_0_14px_rgb(250_204_21/0.22)] transition-colors active:bg-cr-yellow/20"
+              aria-label="Wallet balance"
+            >
+              <Wallet className="h-3.5 w-3.5 shrink-0 text-cr-yellow" strokeWidth={2.25} />
+              <span className="max-w-[5.5rem] truncate text-[11px] font-bold tabular-nums text-cr-yellow sm:max-w-none sm:text-xs">
+                {walletLoading ? "…" : formatNairaFromKobo(wallet?.balanceKobo ?? 0)}
+              </span>
+              {!walletLoading && trips > 0 && (
+                <span className="hidden rounded-full bg-cr-yellow/25 px-1.5 py-0.5 text-[9px] font-bold text-[#1a1400] sm:inline">
+                  {trips} trip{trips === 1 ? "" : "s"}
+                </span>
+              )}
+            </Link>
+          )}
           <Link
             href="/cityrun/account"
             className="relative flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition-colors active:bg-white/[0.08]"

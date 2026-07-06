@@ -75,6 +75,24 @@ export type CustomerAdminAccount = {
   completedCount: number;
   activeCount: number;
   cancelledCount: number;
+  walletBalanceKobo?: number;
+};
+
+export type WalletSummary = {
+  userId: string;
+  balanceKobo: number;
+  currency: string;
+  updatedAt: string;
+};
+
+export type WalletTransaction = {
+  id: string;
+  type: "topup" | "debit" | "refund" | "adjustment";
+  amountKobo: number;
+  balanceAfterKobo: number;
+  orderId?: string;
+  description: string;
+  createdAt: string;
 };
 
 export type Rider = {

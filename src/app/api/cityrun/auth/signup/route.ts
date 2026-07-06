@@ -5,6 +5,7 @@ import {
   registerCustomer,
 } from "@/lib/auth/customer-auth";
 import { upsertProfile, upsertProfileForSession } from "@/lib/auth/profile-store";
+import { ensureWallet } from "@/lib/city-run/wallets-store";
 import { hasServiceRoleKey } from "@/lib/supabase/server";
 import { createRouteHandlerClient } from "@/utils/supabase/route-handler";
 import type { AccountType, AddressValue } from "@/lib/city-run/types";
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
 
       if (hasServiceRoleKey()) {
         await upsertProfile(user.id, user.email ?? email, profilePatch);
+        await ensureWallet(user.id);
       } else {
         await upsertProfileForSession(
           supabase,

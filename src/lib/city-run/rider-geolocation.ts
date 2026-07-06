@@ -51,6 +51,43 @@ export function requestRiderGeolocation(): Promise<GeolocationPosition> {
   });
 }
 
+/** Faster pickup for customers — network/cached first, then GPS. */
+export function requestCustomerGeolocation(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (!isGeolocationSupported()) {
+      reject(new Error("Geolocation is not supported on this device."));
+      return;
+    }
+
+    const tryGet = (options: PositionOptions) =>
+      new Promise<GeolocationPosition>((res, rej) => {
+        navigator.geolocation.getCurrentPosition(res, rej, options);
+      });
+
+    void tryGet({
+      enableHighAccuracy: false,
+      maximumAge: 120_000,
+      timeout: 6_000,
+    })
+      .then(resolve)
+      .catch(() =>
+        tryGet({
+          enableHighAccuracy: true,
+          maximumAge: 15_000,
+          timeout: 10_000,
+        })
+          .then(resolve)
+          .catch(() =>
+            tryGet({
+              enableHighAccuracy: false,
+              maximumAge: 300_000,
+              timeout: 8_000,
+            }).then(resolve, reject),
+          ),
+      );
+  });
+}
+
 export async function enableRiderLocationTracking(): Promise<GeolocationPosition> {
   const position = await requestRiderGeolocation();
   setRiderLocationConsent("granted");

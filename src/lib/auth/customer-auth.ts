@@ -1,4 +1,5 @@
 import { upsertProfile } from "@/lib/auth/profile-store";
+import { ensureWallet } from "@/lib/city-run/wallets-store";
 import {
   createAdminClient,
   createPublicAuthClient,
@@ -167,6 +168,8 @@ export async function registerVendorByAdmin(input: {
     businessAddress,
     loginPassword: input.password,
   });
+
+  await ensureWallet(data.user.id);
 
   return data.user;
 }

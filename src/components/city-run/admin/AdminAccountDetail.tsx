@@ -19,6 +19,7 @@ import {
   formatAdminWhen,
 } from "@/components/city-run/admin/AdminUI";
 import { isActiveDelivery } from "@/lib/city-run/status-config";
+import { formatNairaFromKobo } from "@/lib/city-run/pricing";
 import type { CustomerAdminAccount, DeliveryOrder } from "@/lib/city-run/types";
 
 const kindLabels = { send: "Send", receive: "Recv", "store-pickup": "Store" } as const;
@@ -41,6 +42,9 @@ export function AdminAccountDetail({ accountId }: { accountId: string }) {
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [creditAmount, setCreditAmount] = useState("2000");
+  const [creditNote, setCreditNote] = useState("Admin wallet credit");
+  const [crediting, setCrediting] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/cityrun/admin/customers/${accountId}`);
@@ -75,6 +79,36 @@ export function AdminAccountDetail({ accountId }: { accountId: string }) {
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Delete failed");
       setDeleting(false);
+    }
+  }
+
+  async function creditWallet() {
+    if (!data) return;
+    setCrediting(true);
+    setMessage("");
+    try {
+      const res = await fetch(`/api/cityrun/admin/customers/${accountId}/wallet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountNaira: Number(creditAmount),
+          description: creditNote,
+        }),
+      });
+      const body = (await res.json()) as { error?: string; wallet?: { balanceKobo: number } };
+      if (!res.ok) throw new Error(body.error ?? "Could not credit wallet");
+      setData({
+        ...data,
+        account: {
+          ...data.account,
+          walletBalanceKobo: body.wallet?.balanceKobo ?? data.account.walletBalanceKobo,
+        },
+      });
+      setMessage(`Wallet credited. New balance: ${formatNairaFromKobo(body.wallet?.balanceKobo ?? 0)}`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not credit wallet");
+    } finally {
+      setCrediting(false);
     }
   }
 
@@ -149,6 +183,33 @@ export function AdminAccountDetail({ accountId }: { accountId: string }) {
         {account.loginPassword && (
           <AdminRow label="Login password (ops)" value={account.loginPassword} />
         )}
+      </AdminCard>
+
+      <AdminCard className="mt-4">
+        <AdminRow
+          label="Wallet balance"
+          value={formatNairaFromKobo(account.walletBalanceKobo ?? 0)}
+        />
+        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <input
+            type="number"
+            min={1}
+            value={creditAmount}
+            onChange={(event) => setCreditAmount(event.target.value)}
+            placeholder="Amount in ₦"
+            className="rounded-lg border border-[var(--admin-border)] bg-transparent px-3 py-2 text-sm"
+          />
+          <input
+            type="text"
+            value={creditNote}
+            onChange={(event) => setCreditNote(event.target.value)}
+            placeholder="Note"
+            className="rounded-lg border border-[var(--admin-border)] bg-transparent px-3 py-2 text-sm"
+          />
+          <AdminBtn disabled={crediting} onClick={() => void creditWallet()}>
+            {crediting ? "Crediting…" : "Credit wallet"}
+          </AdminBtn>
+        </div>
       </AdminCard>
 
       <div className="mt-6">

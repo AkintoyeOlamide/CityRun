@@ -31,6 +31,7 @@ export type GooglePolyline = {
 
 type GoogleMapsApi = {
   maps: {
+    importLibrary?: (name: string) => Promise<unknown>;
     Map: new (el: HTMLElement, opts: object) => GoogleMap;
     Marker: new (opts: object) => GoogleMarker;
     InfoWindow: new (opts?: object) => GoogleInfoWindow;
@@ -129,7 +130,7 @@ function loadMapsUnified(): Promise<void> {
   if (mapsAuthFailed) return Promise.reject(new MapsAuthError());
 
   const win = window as GoogleMapsWindow;
-  if (win.google?.maps?.places?.Autocomplete && win.google?.maps?.Map) {
+  if (win.google?.maps?.importLibrary || win.google?.maps?.Map) {
     return Promise.resolve();
   }
 
@@ -139,7 +140,7 @@ function loadMapsUnified(): Promise<void> {
         if (!apiKey) {
           throw new Error("Google Maps API key is not configured");
         }
-        return loadScript(["places"], "maps", apiKey);
+        return loadScript([], "maps", apiKey);
       })
       .catch((error) => {
         mapsLoadPromise = null;
@@ -173,6 +174,48 @@ function resetMapsLoadState() {
   }
 }
 
+function isGoogleMapsAuthConsoleError(args: unknown[]): boolean {
+  const text = args
+    .map((value) => (typeof value === "string" ? value : String(value)))
+    .join(" ");
+  return (
+    text.includes("RefererNotAllowedMapError") ||
+    text.includes("Google Maps JavaScript API error") ||
+    text.includes("InvalidKeyMapError") ||
+    text.includes("ApiNotActivatedMapError")
+  );
+}
+
+/** Google logs auth failures to console.error — Next.js dev overlay treats that as a crash. */
+function withSuppressedGoogleMapsConsoleErrors<T>(run: () => Promise<T>): Promise<T> {
+  if (typeof window === "undefined") return run();
+
+  const originalError = console.error;
+  const onWindowError = (event: ErrorEvent) => {
+    if (isGoogleMapsAuthConsoleError([event.message])) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  };
+
+  console.error = (...args: unknown[]) => {
+    if (isGoogleMapsAuthConsoleError(args)) return;
+    originalError.apply(console, args);
+  };
+  window.addEventListener("error", onWindowError, true);
+
+  return run().finally(() => {
+    console.error = originalError;
+    window.removeEventListener("error", onWindowError, true);
+  });
+}
+
+export function mapsAuthHelpForCurrentOrigin(): string {
+  if (typeof window === "undefined") return "";
+  const origin = window.location.origin;
+  return `Add ${origin}/* to your Google Maps API key HTTP referrers in Google Cloud Console (APIs & Services → Credentials).`;
+}
+
 function loadScript(
   libraries: string[],
   datasetValue: string,
@@ -182,37 +225,44 @@ function loadScript(
   if (mapsAuthFailed) return Promise.reject(new MapsAuthError());
 
   const win = window as GoogleMapsWindow;
-  const hasPlaces = Boolean(win.google?.maps?.places?.Autocomplete);
-  const hasMap = Boolean(win.google?.maps?.Map);
+  const hasCoreMaps = Boolean(
+    win.google?.maps?.importLibrary || win.google?.maps?.Map,
+  );
 
-  if (libraries.includes("places") && hasPlaces) return Promise.resolve();
-  if (libraries.length === 0 && hasMap) return Promise.resolve();
+  if (hasCoreMaps) return Promise.resolve();
 
-  return new Promise((resolve, reject) => {
-    win.gm_authFailure = () => {
-      resetMapsLoadState();
-      reject(new MapsAuthError());
-    };
+  return withSuppressedGoogleMapsConsoleErrors(
+    () =>
+      new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (fn: () => void) => {
+          if (settled) return;
+          settled = true;
+          fn();
+        };
 
-    const callbackName = `initCityRunMaps_${datasetValue}_${Date.now()}`;
-    (win as Window & Record<string, () => void>)[callbackName] = () => {
-      resolve();
-      delete (win as Window & Record<string, () => void>)[callbackName];
-    };
+        win.gm_authFailure = () => {
+          resetMapsLoadState();
+          finish(() => reject(new MapsAuthError(mapsAuthHelpForCurrentOrigin())));
+        };
 
-    const script = document.createElement("script");
-    const librariesParam = libraries.length
-      ? `&libraries=${libraries.join(",")}`
-      : "";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}${librariesParam}&callback=${callbackName}`;
-    script.async = true;
-    script.dataset.cityRunMaps = datasetValue;
-    script.onerror = () => {
-      resetMapsLoadState();
-      reject(new Error("Maps failed to load"));
-    };
-    document.head.appendChild(script);
-  });
+        const callbackName = `initCityRunMaps_${datasetValue}_${Date.now()}`;
+        (win as Window & Record<string, () => void>)[callbackName] = () => {
+          delete (win as Window & Record<string, () => void>)[callbackName];
+          finish(resolve);
+        };
+
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&loading=async&callback=${callbackName}`;
+        script.async = true;
+        script.dataset.cityRunMaps = datasetValue;
+        script.onerror = () => {
+          resetMapsLoadState();
+          finish(() => reject(new Error("Maps failed to load")));
+        };
+        document.head.appendChild(script);
+      }),
+  );
 }
 
 export function loadGoogleMapsScript(): Promise<void> {

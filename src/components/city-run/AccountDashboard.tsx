@@ -18,6 +18,7 @@ import {
 import { fetchMyOrdersCached, invalidateMyOrdersCache, ORDERS_CHANGED_EVENT } from "@/lib/city-run/my-orders-cache";
 import type { DeliveryOrder } from "@/lib/city-run/types";
 import { CustomerActiveTripsList } from "@/components/city-run/CustomerActiveTripsList";
+import { CustomerWalletCard } from "@/components/city-run/CustomerWalletCard";
 import { pickActiveOrders } from "@/lib/city-run/use-active-delivery-order";
 
 const kindIcons = {
@@ -278,6 +279,8 @@ export function AccountDashboard({
                   viewAllHref={activeTrips.length > 1 ? "/cityrun/trips" : undefined}
                 />
               )}
+
+              <CustomerWalletCard />
 
               {(profile?.accountType === "business" ||
                 profile?.accountType === "vendor") && (

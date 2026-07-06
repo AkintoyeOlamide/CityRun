@@ -1,6 +1,7 @@
 import { createAdminClient, assertServiceRoleConfigured, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { ProfileRow } from "@/lib/auth/profile-store";
 import { deleteOrdersByUserId } from "@/lib/city-run/orders-store";
+import { getWallet } from "@/lib/city-run/wallets-store";
 import { isActiveDelivery } from "@/lib/city-run/status-config";
 import type {
   AccountType,
@@ -152,9 +153,13 @@ export async function getCustomerAccount(
   const email = await getUserEmail(userId);
   const orders = await loadOrdersForAccount(userId);
   const account = rowToAccount(row, email, orderStats(orders));
+  const wallet = await getWallet(userId).catch(() => null);
 
   return {
-    account,
+    account: {
+      ...account,
+      walletBalanceKobo: wallet?.balanceKobo ?? 0,
+    },
     orders: orders.sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     ),
