@@ -51,7 +51,7 @@ export function requestRiderGeolocation(): Promise<GeolocationPosition> {
   });
 }
 
-/** Faster pickup for customers — network/cached first, then GPS. */
+/** Faster pickup for customers — cached/network first, then GPS. */
 export function requestCustomerGeolocation(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!isGeolocationSupported()) {
@@ -64,28 +64,58 @@ export function requestCustomerGeolocation(): Promise<GeolocationPosition> {
         navigator.geolocation.getCurrentPosition(res, rej, options);
       });
 
-    void tryGet({
+    let settled = false;
+    let watchId: number | undefined;
+
+    const finishFast = (position: GeolocationPosition) => {
+      if (settled) return;
+      settled = true;
+      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+      resolve(position);
+    };
+
+    const fastOptions: PositionOptions = {
       enableHighAccuracy: false,
-      maximumAge: 120_000,
-      timeout: 6_000,
-    })
-      .then(resolve)
-      .catch(() =>
-        tryGet({
-          enableHighAccuracy: true,
-          maximumAge: 15_000,
-          timeout: 10_000,
-        })
-          .then(resolve)
-          .catch(() =>
-            tryGet({
-              enableHighAccuracy: false,
-              maximumAge: 300_000,
-              timeout: 8_000,
-            }).then(resolve, reject),
-          ),
-      );
+      maximumAge: 600_000,
+      timeout: 2_000,
+    };
+
+    watchId = navigator.geolocation.watchPosition(finishFast, () => {}, fastOptions);
+    navigator.geolocation.getCurrentPosition(finishFast, () => {}, fastOptions);
+
+    window.setTimeout(() => {
+      if (settled) return;
+      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+
+      void tryGet({ enableHighAccuracy: false, maximumAge: 180_000, timeout: 3_500 })
+        .then(resolve)
+        .catch(() =>
+          tryGet({ enableHighAccuracy: true, maximumAge: 60_000, timeout: 7_000 })
+            .then(resolve)
+            .catch(() =>
+              tryGet({
+                enableHighAccuracy: false,
+                maximumAge: 600_000,
+                timeout: 4_000,
+              }).then(resolve, reject),
+            ),
+        );
+    }, 2_200);
   });
+}
+
+let customerCoordinatesWarmup: Promise<GeolocationPosition> | null = null;
+
+/** Start GPS lookup early (e.g. when the send form mounts). */
+export function warmCustomerCoordinates(): Promise<GeolocationPosition> {
+  if (!customerCoordinatesWarmup) {
+    customerCoordinatesWarmup = requestCustomerGeolocation();
+  }
+  return customerCoordinatesWarmup;
+}
+
+export function clearCustomerCoordinatesWarmup() {
+  customerCoordinatesWarmup = null;
 }
 
 export async function enableRiderLocationTracking(): Promise<GeolocationPosition> {

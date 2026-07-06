@@ -1,7 +1,9 @@
 import {
+  clearCustomerCoordinatesWarmup,
   isGeolocationSupported,
-  requestCustomerGeolocation,
+  warmCustomerCoordinates,
 } from "@/lib/city-run/rider-geolocation";
+import { reverseGeocodeClient } from "@/lib/city-run/reverse-geocode-client";
 import type { AddressValue } from "@/lib/city-run/types";
 
 function geolocationErrorMessage(error: unknown): string {
@@ -27,32 +29,73 @@ function geolocationErrorMessage(error: unknown): string {
   return "Could not get your location.";
 }
 
+async function fetchServerReverseGeocode(
+  lat: number,
+  lng: number,
+  signal: AbortSignal,
+): Promise<AddressValue | null> {
+  const res = await fetch(
+    `/api/cityrun/places/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+    { signal },
+  );
+
+  if (!res.ok) return null;
+  return (await res.json()) as AddressValue;
+}
+
+function coordinatesFallback(lat: number, lng: number): AddressValue {
+  return {
+    formatted: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+    lat,
+    lng,
+  };
+}
+
+/** Kick off GPS lookup before the user taps anything. */
+export function warmCurrentLocationLookup() {
+  if (!isGeolocationSupported()) return;
+  void warmCustomerCoordinates();
+}
+
+export async function resolveAddressFromCoordinates(
+  lat: number,
+  lng: number,
+): Promise<AddressValue> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 5_000);
+
+  const lookups: Promise<AddressValue | null>[] = [
+    reverseGeocodeClient(lat, lng),
+    fetchServerReverseGeocode(lat, lng, controller.signal),
+  ];
+
+  try {
+    const results = await Promise.allSettled(lookups);
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value?.formatted?.trim()) {
+        return result.value;
+      }
+    }
+    return coordinatesFallback(lat, lng);
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 export async function resolveAddressFromCurrentLocation(): Promise<AddressValue> {
   if (!isGeolocationSupported()) {
     throw new Error("Location is not supported on this device.");
   }
 
-  const position = await requestCustomerGeolocation();
-  const lat = position.coords.latitude;
-  const lng = position.coords.longitude;
-
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 12_000);
-
   try {
-    const res = await fetch(
-      `/api/cityrun/places/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
-      { signal: controller.signal },
+    const position = await warmCustomerCoordinates();
+    return resolveAddressFromCoordinates(
+      position.coords.latitude,
+      position.coords.longitude,
     );
-
-    if (res.ok) {
-      return (await res.json()) as AddressValue;
-    }
-
-    const body = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error ?? "Could not look up your address.");
-  } finally {
-    window.clearTimeout(timeout);
+  } catch (error) {
+    clearCustomerCoordinatesWarmup();
+    throw error;
   }
 }
 

@@ -6,6 +6,7 @@ import type { AddressValue } from "@/lib/city-run/types";
 import {
   geolocationErrorMessage,
   resolveAddressFromCurrentLocation,
+  warmCurrentLocationLookup,
 } from "@/lib/city-run/use-current-location-address";
 import {
   fetchClientPlacePredictions,
@@ -42,22 +43,11 @@ async function fetchServerPredictions(input: string): Promise<Prediction[]> {
     `/api/cityrun/places/autocomplete?input=${encodeURIComponent(input)}`,
   );
   if (!res.ok) throw new Error("Autocomplete failed");
-  const body = (await res.json()) as { predictions?: Prediction[] };
+  const body = (await res.json()) as {
+    predictions?: Prediction[];
+    source?: "google" | "nominatim" | "none";
+  };
   return body.predictions ?? [];
-}
-
-function mergePredictions(primary: Prediction[], secondary: Prediction[]): Prediction[] {
-  const seen = new Set<string>();
-  const merged: Prediction[] = [];
-
-  for (const prediction of [...primary, ...secondary]) {
-    const key = prediction.placeId || prediction.description.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(prediction);
-  }
-
-  return merged;
 }
 
 export function AddressAutocomplete({
@@ -87,8 +77,13 @@ export function AddressAutocomplete({
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
   const [editMode, setEditMode] = useState(!lockUntilChange);
+  const [mounted, setMounted] = useState(false);
 
   onChangeRef.current = onChange;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setQuery(value.formatted);
@@ -96,6 +91,10 @@ export function AddressAutocomplete({
 
   useEffect(() => {
     let cancelled = false;
+
+    if (autoDetectOnMount) {
+      warmCurrentLocationLookup();
+    }
 
     loadGooglePlacesScript()
       .then(() => {
@@ -117,7 +116,7 @@ export function AddressAutocomplete({
   }, []);
 
   useEffect(() => {
-    if (!autoDetectOnMount || !isGeolocationSupported()) {
+    if (!mounted || !autoDetectOnMount || !isGeolocationSupported()) {
       if (lockUntilChange && !value.formatted.trim()) setEditMode(true);
       return;
     }
@@ -153,7 +152,7 @@ export function AddressAutocomplete({
     return () => {
       cancelled = true;
     };
-  }, [autoDetectOnMount, lockUntilChange, value.formatted]);
+  }, [mounted, autoDetectOnMount, lockUntilChange, value.formatted]);
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
@@ -193,14 +192,17 @@ export function AddressAutocomplete({
           }
         }
 
-        const [clientResults, serverResults] = await Promise.all([
-          googleReadyRef.current
-            ? fetchClientPlacePredictions(trimmed).catch(() => [] as Prediction[])
-            : Promise.resolve([] as Prediction[]),
-          fetchServerPredictions(trimmed).catch(() => [] as Prediction[]),
-        ]);
+        let next: Prediction[] = [];
 
-        const next = mergePredictions(clientResults, serverResults);
+        if (googleReadyRef.current) {
+          next = await fetchClientPlacePredictions(trimmed).catch(
+            () => [] as Prediction[],
+          );
+        }
+
+        if (next.length === 0) {
+          next = await fetchServerPredictions(trimmed).catch(() => [] as Prediction[]);
+        }
 
         if (requestId !== requestIdRef.current) return;
         setPredictions(next);
@@ -286,11 +288,16 @@ export function AddressAutocomplete({
     }
   }, [lockUntilChange]);
 
+  const geolocationAvailable = mounted && isGeolocationSupported();
+
   const canUseCurrentLocation =
-    showCurrentLocation && isGeolocationSupported() && editMode;
+    showCurrentLocation && geolocationAvailable && editMode;
 
   const showLockedView =
-    lockUntilChange && !editMode && (locating || value.formatted.trim().length > 0);
+    mounted &&
+    lockUntilChange &&
+    !editMode &&
+    (locating || value.formatted.trim().length > 0);
 
   const showDropdown = open && query.trim().length >= 3;
 
@@ -409,7 +416,8 @@ export function AddressAutocomplete({
         )}
       </div>
 
-      {(canUseCurrentLocation || (autoDetectOnMount && editMode && isGeolocationSupported())) && (
+      {(canUseCurrentLocation ||
+        (autoDetectOnMount && editMode && geolocationAvailable)) && (
         <button
           type="button"
           onClick={() => void handleUseCurrentLocation()}

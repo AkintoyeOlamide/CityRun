@@ -1,4 +1,9 @@
 import type { AddressValue } from "@/lib/city-run/types";
+import {
+  filterNominatimPredictions,
+  lagosMetroCenter,
+  lagosMetroRestriction,
+} from "@/lib/city-run/places-autocomplete-utils";
 
 export type PlacePrediction = {
   description: string;
@@ -13,9 +18,9 @@ export type AutocompleteResult = {
 };
 
 const lagosLocationBias = {
-  lat: 6.5244,
-  lng: 3.3792,
-  radiusMeters: 45_000,
+  lat: lagosMetroCenter.lat,
+  lng: lagosMetroCenter.lng,
+  radiusMeters: 50_000,
 };
 
 function readServerMapsKey(): string {
@@ -39,13 +44,23 @@ async function googleAutocompleteNew(input: string): Promise<PlacePrediction[] |
     },
     body: JSON.stringify({
       input,
-      includedRegionCodes: ["NG"],
       languageCode: "en",
-      locationBias: {
-        circle: {
-          center: { latitude: lagosLocationBias.lat, longitude: lagosLocationBias.lng },
-          radius: lagosLocationBias.radiusMeters,
+      regionCode: "NG",
+      locationRestriction: {
+        rectangle: {
+          low: {
+            latitude: lagosMetroRestriction.south,
+            longitude: lagosMetroRestriction.west,
+          },
+          high: {
+            latitude: lagosMetroRestriction.north,
+            longitude: lagosMetroRestriction.east,
+          },
         },
+      },
+      origin: {
+        latitude: lagosMetroCenter.lat,
+        longitude: lagosMetroCenter.lng,
       },
     }),
     cache: "no-store",
@@ -217,7 +232,7 @@ export async function autocompletePlaces(input: string): Promise<AutocompleteRes
     return { predictions: googleLegacy, source: "google" };
   }
 
-  const nominatim = await nominatimAutocomplete(trimmed);
+  const nominatim = filterNominatimPredictions(trimmed, await nominatimAutocomplete(trimmed));
   if (nominatim.length > 0) {
     return { predictions: nominatim, source: "nominatim" };
   }

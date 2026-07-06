@@ -11,6 +11,8 @@ import { isBusinessAccount } from "@/lib/city-run/account-utils";
 import { useAuth } from "@/lib/auth/use-auth";
 import { formatNairaFromKobo } from "@/lib/city-run/pricing";
 import type { AddressValue, DeliveryKind, SavedClient } from "@/lib/city-run/types";
+import { warmCurrentLocationLookup } from "@/lib/city-run/use-current-location-address";
+import { loadGoogleMapsScript } from "@/lib/city-run/google-maps";
 
 const AddressAutocomplete = dynamic(
   () =>
@@ -72,6 +74,13 @@ export function DeliveryRequestFlow({ kind }: DeliveryRequestFlowProps) {
     isBusiness && kind === "send" && !!businessAddress?.formatted;
   const dropoffLocked =
     isBusiness && kind === "receive" && !!businessAddress?.formatted;
+
+  useEffect(() => {
+    if (kind === "send" && !isBusiness) {
+      warmCurrentLocationLookup();
+      void loadGoogleMapsScript();
+    }
+  }, [kind, isBusiness]);
 
   useEffect(() => {
     if (!isBusiness || !businessAddress?.formatted) return;

@@ -49,6 +49,20 @@ type GoogleMapsApi = {
       removeListener: (listener: object) => void;
       clearInstanceListeners: (instance: object) => void;
     };
+    Geocoder: new () => {
+      geocode: (
+        request: { location: { lat: number; lng: number } },
+        callback: (
+          results: Array<{
+            formatted_address?: string;
+            place_id?: string;
+            geometry?: { location?: { lat: () => number; lng: () => number } };
+          }> | null,
+          status: string,
+        ) => void,
+      ) => void;
+    };
+    GeocoderStatus?: { OK: string };
     places?: {
       Autocomplete: new (
         input: HTMLInputElement,

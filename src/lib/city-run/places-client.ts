@@ -1,8 +1,12 @@
 import {
   didMapsAuthFail,
-  lagosLocationBias,
+  getGoogleMaps,
   loadGooglePlacesScript,
 } from "@/lib/city-run/google-maps";
+import {
+  lagosMetroCenter,
+  lagosMetroRestriction,
+} from "@/lib/city-run/places-autocomplete-utils";
 import type { AddressValue } from "@/lib/city-run/types";
 
 export type ClientPlacePrediction = {
@@ -12,23 +16,34 @@ export type ClientPlacePrediction = {
 
 type PlacesLibrary = {
   AutocompleteSessionToken: new () => object;
-  AutocompleteSuggestion: {
+  AutocompleteSuggestion?: {
     fetchAutocompleteSuggestions: (request: object) => Promise<{
       suggestions?: Array<{
-        placePrediction?: {
-          placeId?: string;
-          place?: string;
-          text?: { text?: string };
-          structuredFormat?: {
-            mainText?: { text?: string };
-            secondaryText?: { text?: string };
-          };
-          toPlace?: () => PlaceInstance;
-        };
+        placePrediction?: PlacePredictionShape;
       }>;
     }>;
   };
+  AutocompleteService?: new () => {
+    getPlacePredictions: (
+      request: object,
+      callback: (
+        results: Array<{ description: string; place_id: string }> | null,
+        status: string,
+      ) => void,
+    ) => void;
+  };
+  PlacesServiceStatus?: { OK: string; ZERO_RESULTS: string };
   Place: new (options: { id: string; requestedLanguage?: string }) => PlaceInstance;
+};
+
+type PlacePredictionShape = {
+  placeId?: string;
+  place?: string;
+  text?: { text?: string };
+  structuredFormat?: {
+    mainText?: { text?: string };
+    secondaryText?: { text?: string };
+  };
 };
 
 type PlaceInstance = {
@@ -42,19 +57,14 @@ type GoogleMapsWindow = Window & {
   google?: {
     maps?: {
       importLibrary?: (name: string) => Promise<PlacesLibrary>;
+      LatLng?: new (lat: number, lng: number) => object;
     };
   };
 };
 
 let autocompleteSessionToken: object | null = null;
 
-function formatPredictionDescription(prediction: {
-  text?: { text?: string };
-  structuredFormat?: {
-    mainText?: { text?: string };
-    secondaryText?: { text?: string };
-  };
-}): string {
+function formatPredictionDescription(prediction: PlacePredictionShape): string {
   if (prediction.text?.text?.trim()) return prediction.text.text.trim();
 
   const main = prediction.structuredFormat?.mainText?.text?.trim() ?? "";
@@ -63,15 +73,26 @@ function formatPredictionDescription(prediction: {
   return main || secondary;
 }
 
-function normalizePlaceId(prediction: {
-  placeId?: string;
-  place?: string;
-}): string {
+function normalizePlaceId(prediction: PlacePredictionShape): string {
   return (
     prediction.placeId?.trim() ||
     prediction.place?.replace(/^places\//, "").trim() ||
     ""
   );
+}
+
+function buildAutocompleteRequest(input: string, sessionToken: object) {
+  return {
+    input,
+    sessionToken,
+    language: "en",
+    region: "ng",
+    locationRestriction: lagosMetroRestriction,
+    origin: {
+      lat: lagosMetroCenter.lat,
+      lng: lagosMetroCenter.lng,
+    },
+  };
 }
 
 async function loadPlacesLibrary(): Promise<PlacesLibrary | null> {
@@ -99,6 +120,81 @@ export function resetPlacesAutocompleteSession() {
   autocompleteSessionToken = null;
 }
 
+async function fetchNewPlacePredictions(
+  places: PlacesLibrary,
+  input: string,
+): Promise<ClientPlacePrediction[]> {
+  if (!places.AutocompleteSuggestion) return [];
+
+  const token = autocompleteSessionToken ?? nextSessionToken(places);
+  const { suggestions } = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
+    buildAutocompleteRequest(input, token),
+  );
+
+  const seen = new Set<string>();
+  const predictions: ClientPlacePrediction[] = [];
+
+  for (const suggestion of suggestions ?? []) {
+    const prediction = suggestion.placePrediction;
+    if (!prediction) continue;
+
+    const placeId = normalizePlaceId(prediction);
+    if (!placeId || seen.has(placeId)) continue;
+
+    const description = formatPredictionDescription(prediction);
+    if (!description) continue;
+
+    seen.add(placeId);
+    predictions.push({ description, placeId });
+  }
+
+  return predictions;
+}
+
+async function fetchLegacyPlacePredictions(
+  places: PlacesLibrary,
+  input: string,
+): Promise<ClientPlacePrediction[]> {
+  if (!places.AutocompleteService || !places.PlacesServiceStatus) return [];
+
+  const maps = getGoogleMaps();
+  const win = window as GoogleMapsWindow;
+  const LatLng = win.google?.maps?.LatLng ?? maps?.LatLng;
+  if (!LatLng) return [];
+
+  const center = new LatLng(lagosMetroCenter.lat, lagosMetroCenter.lng);
+  const service = new places.AutocompleteService();
+
+  return new Promise((resolve) => {
+    service.getPlacePredictions(
+      {
+        input,
+        componentRestrictions: { country: "ng" },
+        location: center,
+        radius: 50_000,
+        strictBounds: false,
+      },
+      (results, status) => {
+        if (
+          status !== places.PlacesServiceStatus!.OK ||
+          !results ||
+          results.length === 0
+        ) {
+          resolve([]);
+          return;
+        }
+
+        resolve(
+          results.map((result) => ({
+            description: result.description,
+            placeId: result.place_id,
+          })),
+        );
+      },
+    );
+  });
+}
+
 export async function fetchClientPlacePredictions(
   input: string,
 ): Promise<ClientPlacePrediction[]> {
@@ -106,48 +202,22 @@ export async function fetchClientPlacePredictions(
   if (trimmed.length < 3) return [];
 
   const places = await loadPlacesLibrary();
-  if (!places?.AutocompleteSuggestion) return [];
-
-  const token = autocompleteSessionToken ?? nextSessionToken(places);
+  if (!places) return [];
 
   try {
-    const { suggestions } = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-      input: trimmed,
-      sessionToken: token,
-      includedRegionCodes: ["NG"],
-      language: "en",
-      locationBias: {
-        circle: {
-          center: {
-            latitude: lagosLocationBias.lat,
-            longitude: lagosLocationBias.lng,
-          },
-          radius: lagosLocationBias.radiusMeters,
-        },
-      },
-    });
-
-    const seen = new Set<string>();
-    const predictions: ClientPlacePrediction[] = [];
-
-    for (const suggestion of suggestions ?? []) {
-      const prediction = suggestion.placePrediction;
-      if (!prediction) continue;
-
-      const placeId = normalizePlaceId(prediction);
-      if (!placeId || seen.has(placeId)) continue;
-
-      const description = formatPredictionDescription(prediction);
-      if (!description) continue;
-
-      seen.add(placeId);
-      predictions.push({ description, placeId });
-    }
-
-    return predictions;
+    const modern = await fetchNewPlacePredictions(places, trimmed);
+    if (modern.length > 0) return modern;
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      console.warn("[CityRun] Google autocomplete failed:", error);
+      console.warn("[CityRun] Google Places (New) autocomplete failed:", error);
+    }
+  }
+
+  try {
+    return await fetchLegacyPlacePredictions(places, trimmed);
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[CityRun] Google Places (legacy) autocomplete failed:", error);
     }
     return [];
   }
