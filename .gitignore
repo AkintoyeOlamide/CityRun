@@ -48,8 +48,9 @@ secrets.json
 *.apk
 *.aab
 
-# vercel
+# vercel / supabase cli local state
 .vercel
+supabase/.temp/
 
 # typescript
 *.tsbuildinfo
