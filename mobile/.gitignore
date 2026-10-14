@@ -1,0 +1,23 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+*.iml
+.idea/
+android/.gradle/
+android/local.properties
+android/app/debug
+android/app/profile
+android/app/release
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+*.apk
+*.aab
+*.ipa
+.DS_Store
+android/key.properties
+android/keystore/

@@ -1,0 +1,44 @@
+{
+  "packageId": "org.citygateshl.cityrun",
+  "host": "www.citygateshl.org",
+  "name": "City Run",
+  "launcherName": "City Run",
+  "display": "standalone",
+  "themeColor": "#3478F6",
+  "themeColorDark": "#070D1A",
+  "navigationColor": "#070D1A",
+  "navigationColorDark": "#070D1A",
+  "navigationDividerColor": "#070D1A",
+  "navigationDividerColorDark": "#070D1A",
+  "backgroundColor": "#070D1A",
+  "enableNotifications": true,
+  "startUrl": "/cityrun",
+  "iconUrl": "https://www.citygateshl.org/icon-512.png",
+  "maskableIconUrl": "https://www.citygateshl.org/icon-512.png",
+  "monochromeIconUrl": "https://www.citygateshl.org/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./cityrun-release-key.keystore",
+    "alias": "cityrun"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://www.citygateshl.org/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "playBilling": false,
+    "locationDelegation": true
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": []
+}

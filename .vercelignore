@@ -1,0 +1,11 @@
+mobile
+.next
+node_modules
+.git
+.city-run-orders.json
+public/downloads
+*.apk
+*.pem
+.env
+.env.*
+!.env.example

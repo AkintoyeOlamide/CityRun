@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// Deploy: Firebase Console → Storage → Rules
+// Or: firebase deploy --only storage
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /city-run/{folder}/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /city-run/{folder}/{subfolder}/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
