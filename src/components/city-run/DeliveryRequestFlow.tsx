@@ -8,7 +8,7 @@ import { BusinessPickupField } from "@/components/city-run/BusinessPickupField";
 import { flowConfig } from "@/lib/city-run/config";
 import { isBusinessAccount } from "@/lib/city-run/account-utils";
 import { useAuth } from "@/lib/auth/use-auth";
-import { formatNairaFromKobo } from "@/lib/city-run/pricing";
+import { estimateDeliveryFareKobo, formatNairaFromKobo } from "@/lib/city-run/pricing";
 import { ServiceModePicker } from "@/components/city-run/ServiceModePicker";
 import { serviceModeCatalog } from "@/lib/city-run/service-mode";
 import { useServiceMode } from "@/lib/city-run/use-service-mode";
@@ -103,10 +103,14 @@ export function DeliveryRequestFlow({ kind }: DeliveryRequestFlowProps) {
 
   const loadQuote = useCallback(async () => {
     if (!addressValid(pickup) || !addressValid(dropoff)) {
-      setFareKobo(WALLET_TRIP_PRICE_KOBO);
-      setQuoteDistanceKm(undefined);
+      const empty = estimateDeliveryFareKobo({ serviceMode, pickup, dropoff });
+      setFareKobo(empty.fareKobo);
+      setQuoteDistanceKm(empty.distanceKm);
       return;
     }
+    const local = estimateDeliveryFareKobo({ serviceMode, pickup, dropoff });
+    setFareKobo(local.fareKobo);
+    setQuoteDistanceKm(local.distanceKm);
     setQuoteLoading(true);
     try {
       const res = await fetch("/api/cityrun/orders/quote", {
@@ -121,13 +125,16 @@ export function DeliveryRequestFlow({ kind }: DeliveryRequestFlowProps) {
       const body = (await res.json().catch(() => null)) as {
         fareKobo?: number;
         distanceKm?: number;
+        pricedByDistance?: boolean;
       } | null;
-      if (res.ok && typeof body?.fareKobo === "number") {
+      const trustServer =
+        serviceMode !== "cityrun-plus" || body?.pricedByDistance === true;
+      if (res.ok && typeof body?.fareKobo === "number" && trustServer) {
         setFareKobo(body.fareKobo);
         setQuoteDistanceKm(body.distanceKm);
       }
     } catch {
-      /* keep last quote */
+      /* keep local quote */
     } finally {
       setQuoteLoading(false);
     }

@@ -212,7 +212,7 @@ extension ServiceModeX on ServiceMode {
 
   String get priceHint => switch (this) {
         ServiceMode.cityrun => 'Flat ₦1,000',
-        ServiceMode.cityrunPlus => 'Priced by distance',
+        ServiceMode.cityrunPlus => '₦250/km · ₦0.25/m',
       };
 
   static ServiceMode? tryParse(String? value) {

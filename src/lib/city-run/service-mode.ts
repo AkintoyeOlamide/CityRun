@@ -28,7 +28,7 @@ export const serviceModeCatalog: Record<
     title: "City Run Plus",
     tagline: "Motorbike",
     explanation: "Faster motorbike delivery. The fare is based on how far we ride.",
-    priceHint: "Priced by distance",
+    priceHint: "₦250/km · ₦0.25/m",
   },
 };
 

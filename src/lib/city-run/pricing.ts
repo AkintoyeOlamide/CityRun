@@ -16,6 +16,10 @@ export type FareQuote = {
   serviceMode: ServiceMode;
   distanceKm?: number;
   pricedByDistance: boolean;
+  ratePerKmKobo?: number;
+  ratePerMeterKobo?: number;
+  baseFareKobo?: number;
+  minimumFareKobo?: number;
 };
 
 function toRad(degrees: number) {
@@ -90,6 +94,10 @@ export function estimateDeliveryFareKobo(options?: {
     serviceMode: "cityrun-plus",
     distanceKm: Math.round(distanceKm * 10) / 10,
     pricedByDistance: true,
+    ratePerKmKobo: PLUS_PER_KM_KOBO,
+    ratePerMeterKobo: Math.round(PLUS_PER_KM_KOBO / 1000),
+    baseFareKobo: PLUS_BASE_FARE_KOBO,
+    minimumFareKobo: PLUS_MINIMUM_FARE_KOBO,
   };
 }
 

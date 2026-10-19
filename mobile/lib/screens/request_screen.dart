@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:cityrun_app/config.dart';
 import 'package:cityrun_app/models/models.dart';
+import 'package:cityrun_app/pricing.dart';
 import 'package:cityrun_app/screens/order_screen.dart';
 import 'package:cityrun_app/state/orders_controller.dart';
 import 'package:cityrun_app/state/session_controller.dart';
@@ -39,17 +42,48 @@ class _RequestScreenState extends State<RequestScreen> {
   int _fareKobo = AppConfig.tripPriceKobo;
   double? _distanceKm;
   bool _quoteLoading = false;
+  bool _pricedByDistance = false;
+  bool _needsCoordinates = false;
+  Timer? _quoteDebounce;
+  SessionController? _session;
 
   DeliveryKind get kind => widget.kind;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _prefill());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _bindSession();
+      _prefill();
+      _scheduleQuote();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bindSession();
+  }
+
+  void _bindSession() {
+    final session = context.read<SessionController>();
+    if (identical(_session, session)) return;
+    _session?.removeListener(_onSessionChanged);
+    _session = session;
+    _session!.addListener(_onSessionChanged);
+  }
+
+  void _onSessionChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scheduleQuote();
+    });
   }
 
   @override
   void dispose() {
+    _quoteDebounce?.cancel();
+    _session?.removeListener(_onSessionChanged);
     _item.dispose();
     _notes.dispose();
     _contactName.dispose();
@@ -94,7 +128,16 @@ class _RequestScreenState extends State<RequestScreen> {
     return profile?.isBusiness == true && kind == DeliveryKind.send;
   }
 
+  bool get _plusNeedsPins {
+    return context.read<SessionController>().serviceMode == ServiceMode.cityrunPlus &&
+        (_pickup.lat == null ||
+            _pickup.lng == null ||
+            _dropoff.lat == null ||
+            _dropoff.lng == null);
+  }
+
   bool get _canContinueAddresses {
+    if (_plusNeedsPins) return false;
     if (_isBusinessSend) {
       return _pickup.isValid && _dropoff.isValid && _contactPhone.text.trim().length >= 10;
     }
@@ -130,7 +173,7 @@ class _RequestScreenState extends State<RequestScreen> {
                 : (profile?.businessName ?? profile?.fullName ?? 'Recipient'))
             : _contactName.text.trim(),
         contactPhone: _contactPhone.text.trim(),
-        serviceMode: session.serviceMode?.apiValue,
+        serviceMode: session.serviceMode?.apiValue ?? 'cityrun',
       );
       if (!session.isCustomer) {
         await orders.rememberGuestOrder(created.id);
@@ -191,25 +234,100 @@ class _RequestScreenState extends State<RequestScreen> {
     );
   }
 
+  void _applyLocalQuote() {
+    final quote = DeliveryPricing.estimate(
+      serviceMode: context.read<SessionController>().serviceMode,
+      pickup: _pickup,
+      dropoff: _dropoff,
+    );
+    setState(() {
+      _fareKobo = quote.fareKobo;
+      _distanceKm = quote.distanceKm;
+      _pricedByDistance = quote.pricedByDistance;
+      _needsCoordinates = quote.needsCoordinates;
+    });
+  }
+
+  void _scheduleQuote() {
+    _applyLocalQuote();
+    _quoteDebounce?.cancel();
+    _quoteDebounce = Timer(const Duration(milliseconds: 280), _refreshQuote);
+  }
+
   Future<void> _refreshQuote() async {
     if (!_pickup.isValid || !_dropoff.isValid) return;
+    final session = context.read<SessionController>();
+    final mode = session.serviceMode;
     setState(() => _quoteLoading = true);
     try {
-      final session = context.read<SessionController>();
       final quote = await session.api.quoteFare(
         pickup: _pickup,
         dropoff: _dropoff,
-        serviceMode: session.serviceMode?.apiValue,
+        serviceMode: mode?.apiValue ?? 'cityrun',
       );
       if (!mounted) return;
+      final local = DeliveryPricing.estimate(
+        serviceMode: mode,
+        pickup: _pickup,
+        dropoff: _dropoff,
+      );
+      final trustServer = mode != ServiceMode.cityrunPlus || quote.pricedByDistance;
       setState(() {
-        _fareKobo = quote.fareKobo;
-        _distanceKm = quote.distanceKm;
+        _fareKobo = trustServer ? quote.fareKobo : local.fareKobo;
+        _distanceKm = trustServer ? quote.distanceKm : local.distanceKm;
+        _pricedByDistance = trustServer ? quote.pricedByDistance : local.pricedByDistance;
+        _needsCoordinates = local.needsCoordinates;
         _quoteLoading = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _quoteLoading = false);
+      if (!mounted) return;
+      _applyLocalQuote();
+      setState(() => _quoteLoading = false);
     }
+  }
+
+  String _requestLabel() {
+    if (_pricedByDistance && _needsCoordinates) return DeliveryPricing.plusRateHint;
+    return formatNairaFromKobo(_fareKobo);
+  }
+
+  Widget _fareCard() {
+    final mode = context.watch<SessionController>().serviceMode;
+    final plus = mode == ServiceMode.cityrunPlus;
+    final title = _quoteLoading
+        ? 'Calculating fare…'
+        : plus
+            ? (_needsCoordinates
+                ? 'Pick both addresses from the list'
+                : '${formatNairaFromKobo(_fareKobo)}${_distanceKm == null ? '' : ' · ${_distanceKm!.toStringAsFixed(1)} km'}')
+            : 'Flat fare ${formatNaira(AppConfig.tripPriceNaira)}';
+    final subtitle = plus
+        ? (_needsCoordinates
+            ? 'City Run Plus is ${DeliveryPricing.plusRateHint}, plus a ₦800 start and ₦1,200 minimum.'
+            : '${DeliveryPricing.plusRateHint} · ₦800 start · ₦1,200 min')
+        : 'City Run is ₦1,000 for the trip.';
+
+    return CrCard(
+      child: Row(
+        children: [
+          const Icon(Icons.payments_outlined, color: CrColors.yellow),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: CrColors.textMuted, fontSize: 12, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   List<Widget> _addressStep(List<SavedClient> clients) {
@@ -220,7 +338,10 @@ class _RequestScreenState extends State<RequestScreen> {
         label: kind.pickupLabel,
         placeholder: kind.pickupPlaceholder,
         value: _pickup,
-        onChanged: (value) => setState(() => _pickup = value),
+        onChanged: (value) {
+          setState(() => _pickup = value);
+          _scheduleQuote();
+        },
         locked: _pickupLocked,
         showCurrentLocation: kind == DeliveryKind.send && !_pickupLocked,
       ),
@@ -234,6 +355,7 @@ class _RequestScreenState extends State<RequestScreen> {
             _dropoff = value;
             _clientId = null;
           });
+          _scheduleQuote();
         },
         locked: _dropoffLocked,
       ),
@@ -256,6 +378,7 @@ class _RequestScreenState extends State<RequestScreen> {
                       _contactPhone.text = client.contactPhone;
                       _contactName.text = client.contactName;
                     });
+                    _scheduleQuote();
                   },
                 ),
             ],
@@ -276,17 +399,19 @@ class _RequestScreenState extends State<RequestScreen> {
           decoration: const InputDecoration(hintText: 'Who is receiving?'),
         ),
       ],
+      const SizedBox(height: 16),
+      _fareCard(),
       const SizedBox(height: 24),
       BusyButton(
         label: _isBusinessSend
-            ? 'Request delivery · ${formatNairaFromKobo(_fareKobo)}'
+            ? 'Request delivery · ${_requestLabel()}'
             : 'Continue',
         onPressed: _canContinueAddresses
             ? () {
                 if (_isBusinessSend) {
                   _submit();
                 } else {
-                  _refreshQuote();
+                  _scheduleQuote();
                   setState(() => _step = _Step.confirm);
                 }
               }
@@ -314,24 +439,7 @@ class _RequestScreenState extends State<RequestScreen> {
         ),
       ),
       const SizedBox(height: 16),
-      CrCard(
-        child: Row(
-          children: [
-            const Icon(Icons.payments_outlined, color: CrColors.yellow),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                _quoteLoading
-                    ? 'Calculating fare…'
-                    : context.watch<SessionController>().serviceMode == ServiceMode.cityrunPlus
-                        ? '${formatNairaFromKobo(_fareKobo)}${_distanceKm == null ? '' : ' · ${_distanceKm!.toStringAsFixed(1)} km'}'
-                        : 'Flat fare ${formatNaira(AppConfig.tripPriceNaira)}',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-      ),
+      _fareCard(),
       const SizedBox(height: 24),
       BusyButton(
         label: 'Confirm route',
@@ -389,7 +497,7 @@ class _RequestScreenState extends State<RequestScreen> {
       ),
       const SizedBox(height: 24),
       BusyButton(
-        label: 'Request delivery · ${formatNairaFromKobo(_fareKobo)}',
+        label: 'Request delivery · ${_requestLabel()}',
         onPressed: _canSubmit ? _submit : null,
         busy: _busy,
       ),
