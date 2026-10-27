@@ -7,7 +7,7 @@ export const CITY_RUN_FLAT_FARE_KOBO = WALLET_TRIP_PRICE_KOBO;
 
 /** City Run Plus (motorbike) — distance fare. */
 export const PLUS_BASE_FARE_KOBO = 800_00;
-export const PLUS_PER_KM_KOBO = 250_00;
+export const PLUS_PER_KM_KOBO = 150_00;
 export const PLUS_MINIMUM_FARE_KOBO = 1_200_00;
 const ROAD_DISTANCE_FACTOR = 1.3;
 

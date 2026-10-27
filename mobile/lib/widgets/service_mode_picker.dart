@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:cityrun_app/models/models.dart';
 import 'package:cityrun_app/state/session_controller.dart';
 import 'package:cityrun_app/theme.dart';
-import 'package:cityrun_app/widgets/ui.dart';
 
 class ServiceModePicker extends StatelessWidget {
   const ServiceModePicker({super.key, this.compact = false});
@@ -41,11 +40,6 @@ class ServiceModePicker extends StatelessWidget {
           'How should we deliver?',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 6),
-        const Text(
-          'Pick a ride type, like Bolt — bicycle for a flat fare, motorbike priced by distance.',
-          style: TextStyle(color: CrColors.textMuted, height: 1.4, fontSize: 13),
-        ),
         const SizedBox(height: 14),
         for (final mode in ServiceMode.values) ...[
           _ModeCard(
@@ -80,53 +74,61 @@ class _ModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final yellow = mode == ServiceMode.cityrun;
-    return CrCard(
-      onTap: onTap,
-      padding: EdgeInsets.all(compact ? 12 : 16),
-      child: Row(
-        children: [
-          Container(
-            width: compact ? 40 : 48,
-            height: compact ? 40 : 48,
-            decoration: BoxDecoration(
-              color: yellow ? const Color(0x33FACC15) : const Color(0x263478F6),
-              borderRadius: BorderRadius.circular(14),
-              border: selected
-                  ? Border.all(color: yellow ? CrColors.yellow : CrColors.accentSoft)
-                  : null,
+    final accent = mode == ServiceMode.cityrun ? CrColors.yellow : CrColors.accentSoft;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: EdgeInsets.all(compact ? 12 : 16),
+          decoration: BoxDecoration(
+            color: selected ? accent.withValues(alpha: 0.22) : const Color(0x0DFFFFFF),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? accent : const Color(0x1AFFFFFF),
+              width: selected ? 2.5 : 1,
             ),
-            child: Icon(
-              _icon,
-              color: yellow ? CrColors.yellow : CrColors.accentSoft,
-            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(mode.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 2),
-                Text(
-                  mode.priceHint,
-                  style: const TextStyle(
-                    color: CrColors.yellow,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+          child: Row(
+            children: [
+              Container(
+                width: compact ? 40 : 48,
+                height: compact ? 40 : 48,
+                decoration: BoxDecoration(
+                  color: selected ? accent.withValues(alpha: 0.28) : const Color(0x14FFFFFF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  _icon,
+                  color: selected ? accent : const Color(0x66FFFFFF),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  mode.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: selected ? Colors.white : const Color(0x99FFFFFF),
                   ),
                 ),
-                if (!compact) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    mode.explanation,
-                    style: const TextStyle(color: CrColors.textMuted, fontSize: 12, height: 1.35),
-                  ),
-                ],
-              ],
-            ),
+              ),
+              if (selected)
+                Icon(Icons.check_circle, color: accent, size: compact ? 20 : 22),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

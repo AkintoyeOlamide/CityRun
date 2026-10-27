@@ -11,7 +11,7 @@ export const lagosMetroCenter = {
   lng: 3.3792,
 };
 
-export const lagosLocationBiasMeters = 70_000;
+export const lagosLocationBiasMeters = 50_000;
 
 /** Drop vague OpenStreetMap hits that are not useful for delivery. */
 export function filterNominatimPredictions<T extends { description: string }>(

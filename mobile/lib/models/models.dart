@@ -207,12 +207,12 @@ extension ServiceModeX on ServiceMode {
         ServiceMode.cityrun =>
           'Everyday last-mile delivery on an e-bike. One flat price for the trip.',
         ServiceMode.cityrunPlus =>
-          'Faster motorbike delivery. The fare is based on how far we ride.',
+          'Faster motorbike delivery. Fare is ₦150 per km.',
       };
 
   String get priceHint => switch (this) {
         ServiceMode.cityrun => 'Flat ₦1,000',
-        ServiceMode.cityrunPlus => '₦250/km · ₦0.25/m',
+        ServiceMode.cityrunPlus => '₦150/km',
       };
 
   static ServiceMode? tryParse(String? value) {

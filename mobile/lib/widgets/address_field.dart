@@ -36,7 +36,6 @@ class _AddressFieldState extends State<AddressField> {
   Timer? _debounce;
   List<PlacePrediction> _predictions = [];
   bool _searching = false;
-  bool _searched = false;
   bool _locating = false;
   String? _error;
   bool _picking = false;
@@ -68,7 +67,6 @@ class _AddressFieldState extends State<AddressField> {
     if (text.trim().length < 3) {
       setState(() {
         _predictions = [];
-        _searched = false;
       });
       return;
     }
@@ -93,7 +91,6 @@ class _AddressFieldState extends State<AddressField> {
       setState(() {
         _predictions = results;
         _searching = false;
-        _searched = true;
       });
     } catch (e) {
       if (!mounted || seq != _searchSeq) return;
@@ -103,10 +100,7 @@ class _AddressFieldState extends State<AddressField> {
         setState(() {
           _predictions = retry;
           _searching = false;
-          _searched = true;
-          _error = retry.isEmpty
-              ? 'No addresses found — try a street name or landmark'
-              : null;
+          _error = null;
         });
       } catch (_) {
         if (!mounted || seq != _searchSeq) return;
@@ -239,13 +233,6 @@ class _AddressFieldState extends State<AddressField> {
         if (_error != null) ...[
           const SizedBox(height: 8),
           CrErrorBanner(_error!),
-        ],
-        if (_searched && !_searching && _predictions.isEmpty && _controller.text.trim().length >= 3) ...[
-          const SizedBox(height: 8),
-          const Text(
-            'No addresses found — try a street name or landmark',
-            style: TextStyle(color: CrColors.textMuted, fontSize: 12),
-          ),
         ],
         if (_predictions.isNotEmpty) ...[
           const SizedBox(height: 8),

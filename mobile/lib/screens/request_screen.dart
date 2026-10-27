@@ -297,15 +297,8 @@ class _RequestScreenState extends State<RequestScreen> {
     final title = _quoteLoading
         ? 'Calculating fare…'
         : plus
-            ? (_needsCoordinates
-                ? 'Pick both addresses from the list'
-                : '${formatNairaFromKobo(_fareKobo)}${_distanceKm == null ? '' : ' · ${_distanceKm!.toStringAsFixed(1)} km'}')
+            ? '${formatNairaFromKobo(_fareKobo)}${_distanceKm == null ? '' : ' · ${_distanceKm!.toStringAsFixed(1)} km'}'
             : 'Flat fare ${formatNaira(AppConfig.tripPriceNaira)}';
-    final subtitle = plus
-        ? (_needsCoordinates
-            ? 'City Run Plus is ${DeliveryPricing.plusRateHint}, plus a ₦800 start and ₦1,200 minimum.'
-            : '${DeliveryPricing.plusRateHint} · ₦800 start · ₦1,200 min')
-        : 'City Run is ₦1,000 for the trip.';
 
     return CrCard(
       child: Row(
@@ -313,17 +306,7 @@ class _RequestScreenState extends State<RequestScreen> {
           const Icon(Icons.payments_outlined, color: CrColors.yellow),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: CrColors.textMuted, fontSize: 12, height: 1.35),
-                ),
-              ],
-            ),
+            child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),

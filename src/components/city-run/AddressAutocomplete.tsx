@@ -461,11 +461,6 @@ export function AddressAutocomplete({
           {searching && (
             <li className="px-4 py-3 text-sm text-white/45">Searching addresses…</li>
           )}
-          {!searching && predictions.length === 0 && searched && (
-            <li className="px-4 py-3 text-sm text-white/45">
-              No addresses found — try a street name or landmark
-            </li>
-          )}
           {!searching &&
             predictions.map((prediction) => (
               <li key={prediction.placeId} role="option">

@@ -8,11 +8,11 @@ class DeliveryPricing {
   DeliveryPricing._();
 
   static const plusBaseKobo = 80000;
-  static const plusPerKmKobo = 25000;
-  static const plusPerMeterKobo = 25; // ₦250/km = ₦0.25/m
+  static const plusPerKmKobo = 15000;
+  static const plusPerMeterKobo = 15; // ₦150/km = ₦0.15/m
   static const plusMinimumKobo = 120000;
   static const roadDistanceFactor = 1.3;
-  static const plusRateHint = '₦250/km · ₦0.25/m';
+  static const plusRateHint = '₦150/km';
 
   static FareQuote estimate({
     required ServiceMode? serviceMode,

@@ -34,19 +34,28 @@ export function ServiceModePicker({
               key={id}
               type="button"
               onClick={() => onChange(id)}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+              className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-colors ${
                 selected
-                  ? "border-cr-yellow/50 bg-cr-yellow-muted"
-                  : "border-white/10 bg-white/[0.03] active:bg-white/[0.06]"
+                  ? id === "cityrun-plus"
+                    ? "border-accent bg-accent/25 shadow-[0_0_16px_rgb(52_120_246/0.35)]"
+                    : "border-cr-yellow bg-cr-yellow-muted shadow-[0_0_16px_rgb(250_204_21/0.35)]"
+                  : "border-white/10 bg-white/[0.03] text-white/55 active:bg-white/[0.06]"
               }`}
             >
               <Icon
-                className={`h-5 w-5 shrink-0 ${selected ? "text-cr-yellow" : "text-white/55"}`}
+                className={`h-5 w-5 shrink-0 ${
+                  selected
+                    ? id === "cityrun-plus"
+                      ? "text-accent-light"
+                      : "text-cr-yellow"
+                    : "text-white/40"
+                }`}
                 strokeWidth={2.1}
               />
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-white">{item.title}</span>
-                <span className="block text-[10px] text-white/45">{item.priceHint}</span>
+                <span className={`block text-sm font-semibold ${selected ? "text-white" : "text-white/55"}`}>
+                  {item.title}
+                </span>
               </span>
             </button>
           );
@@ -58,9 +67,6 @@ export function ServiceModePicker({
   return (
     <section>
       <h2 className="text-sm font-semibold text-white/90">How should we deliver?</h2>
-      <p className="mt-1 text-xs leading-relaxed text-white/45">
-        Pick a ride type, like Bolt — bicycle for a flat fare, motorbike priced by distance.
-      </p>
       <ul className="mt-4 space-y-3">
         {(Object.keys(serviceModeCatalog) as ServiceMode[]).map((id) => {
           const item = serviceModeCatalog[id];
@@ -71,33 +77,28 @@ export function ServiceModePicker({
               <button
                 type="button"
                 onClick={() => onChange(id)}
-                className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-4 text-left transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-4 text-left transition-colors ${
                   selected
-                    ? "border-cr-yellow/45 bg-cr-yellow-muted shadow-[0_0_18px_rgb(250_204_21/0.12)]"
+                    ? id === "cityrun-plus"
+                      ? "border-accent bg-accent/25 shadow-[0_0_18px_rgb(52_120_246/0.35)]"
+                      : "border-cr-yellow bg-cr-yellow-muted shadow-[0_0_18px_rgb(250_204_21/0.35)]"
                     : "border-white/10 bg-white/[0.03] active:bg-white/[0.06]"
                 }`}
               >
                 <span
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-                    id === "cityrun-plus"
-                      ? "bg-accent/20 text-accent-light"
-                      : "bg-cr-yellow-muted text-cr-yellow"
+                    selected
+                      ? id === "cityrun-plus"
+                        ? "bg-accent/30 text-accent-light"
+                        : "bg-cr-yellow-muted text-cr-yellow"
+                      : "bg-white/5 text-white/40"
                   }`}
                 >
                   <Icon className="h-6 w-6" strokeWidth={2.1} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="text-base font-bold text-white">{item.title}</span>
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/60">
-                      {item.tagline}
-                    </span>
-                  </span>
-                  <span className="mt-1 block text-sm font-semibold text-cr-yellow">
-                    {item.priceHint}
-                  </span>
-                  <span className="mt-1 block text-xs leading-relaxed text-white/50">
-                    {item.explanation}
+                  <span className={`text-base font-bold ${selected ? "text-white" : "text-white/55"}`}>
+                    {item.title}
                   </span>
                 </span>
               </button>

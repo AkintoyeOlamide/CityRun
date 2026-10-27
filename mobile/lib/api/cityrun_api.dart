@@ -1,4 +1,5 @@
 import 'package:cityrun_app/api/api_client.dart';
+import 'package:cityrun_app/api/google_places.dart';
 import 'package:cityrun_app/models/models.dart';
 
 class CityRunApi {
@@ -250,6 +251,8 @@ class CityRunApi {
   }
 
   Future<List<PlacePrediction>> autocomplete(String input) async {
+    final google = await GooglePlacesClient.instance.autocomplete(input);
+    if (google.isNotEmpty) return google;
     final res = await _client.get(
       '/api/cityrun/places/autocomplete',
       query: {'input': input},
@@ -263,6 +266,8 @@ class CityRunApi {
   }
 
   Future<AddressValue> placeDetails(PlacePrediction prediction) async {
+    final google = await GooglePlacesClient.instance.placeDetails(prediction);
+    if (google != null && google.formatted.trim().isNotEmpty) return google;
     final res = await _client.get('/api/cityrun/places/details', query: {
       'placeId': prediction.placeId,
       'description': prediction.description,

@@ -13,6 +13,11 @@ class AppConfig {
   /// `flutter run --dart-define=CITYRUN_API_BASE=http://192.168.x.x:3000`
   static const _fromDefine = String.fromEnvironment('CITYRUN_API_BASE');
 
+  /// Android / server Places key. Prefer `--dart-define=GOOGLE_MAPS_API_KEY=...`.
+  static const googleMapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+  static const androidPackage = 'org.citygateshl.cityrun';
+  static const androidCertSha1 = 'ba282bbe59e22fc52ae45901f158f0e7b3b61aea';
+
   static String get apiBase {
     if (_fromDefine.trim().isNotEmpty) {
       return _fromDefine.trim().replaceAll(RegExp(r'/$'), '');
